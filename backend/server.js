@@ -12,15 +12,6 @@ const port = 5001;
 app.use(cors()); // Allow cross-origin requests from React frontend
 app.use(express.json()); // Enable reading JSON data from request body
 
-// --- MySQL Connection Setup ---
-//const db = mysql.createConnection({
-    //host: '',
-    //user: '', // CHANGE THIS to your MySQL username
-    //password: '', // CHANGE THIS to your MySQL password
-    //database: '' // Ensure this matches your database name
-//});
-const mysql = require("mysql");
-
 const db = mysql.createConnection({
   host: process.env.host,
   user: process.env.user,
