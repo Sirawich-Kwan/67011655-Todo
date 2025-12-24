@@ -52,7 +52,7 @@ function Login({ onLogin }) {
                     <input
                         type="text"
                         className="form-control"
-                        placeholder="e.g. johndoe"
+                        placeholder="e.g. Rick Astley"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                     />
