@@ -24,17 +24,43 @@ function App() {
         setCurrentUser(null);
     };
 
-    return (
-        <div className="App">
-            <h1>Full Stack Todo App</h1>
-            {/* Conditional rendering based on login status */}
-            {currentUser ? (
-                <TodoList username={currentUser} onLogout={handleLogout} />
-            ) : (
-                <Login onLogin={handleLogin} />
-            )}
+return (
+    <div className="d-flex justify-content-center">
+        <div className="col-12 col-sm-10 col-md-6 col-lg-5">
+
+            <div className="card shadow-sm">
+                <div className="card-body">
+
+                    {/* HEADER */}
+                    <div className="text-center mb-4">
+                        <img
+                            src="/cei-logo.png"
+                            alt="CEI Logo"
+                            style={{ maxWidth: "100px" }}
+                        />
+                        <h4 className="mt-2">CEI Todo</h4>
+                        <p className="text-muted mb-0">
+                            Full Stack Todo App
+                        </p>
+                    </div>
+
+                    {/* MAIN CONTENT */}
+                    {currentUser ? (
+                        <TodoList
+                            username={currentUser}
+                            onLogout={handleLogout}
+                        />
+                    ) : (
+                        <Login onLogin={handleLogin} />
+                    )}
+
+                </div>
+            </div>
+
         </div>
-    );
+    </div>
+);
+
 }
 
 export default App;
