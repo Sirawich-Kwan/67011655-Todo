@@ -54,7 +54,7 @@ function App() {
 
                 {/* OPTIONAL: FOOTER LINKS */}
                 <div className="mt-4 text-center">
-                    <small className="text-muted">© 2024 CEI Professionals</small>
+                    <small className="text-muted">© 2025 CEI Todo App. All rights reserved.</small>
                 </div>
 
             </div>

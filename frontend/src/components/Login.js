@@ -17,50 +17,57 @@ function Login({ onLogin }) {
         }
 
         try {
-            // Use Fetch API for POST request
             const response = await fetch(`${API_URL}/login`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ username }), // Convert object to JSON string
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username }),
             });
 
-            // Check if the response status is OK (200-299)
             if (!response.ok) {
                 const errorData = await response.json();
-                setError(errorData.message || 'Login failed due to server error.');
+                setError(errorData.message || 'Login failed.');
                 return;
             }
 
-            const data = await response.json(); // Parse the response body as JSON
-
+            const data = await response.json();
             if (data.success) {
                 localStorage.setItem('todo_username', username);
-                onLogin(username); // Update App component state
+                onLogin(username);
             } else {
                 setError(data.message || 'Login failed.');
             }
         } catch (err) {
-            // Handle network connection errors
             setError('Network error: Could not connect to the server.');
-            console.error(err);
         }
     };
 
     return (
-        <div>
-            <h2>Login (Username Only)</h2>
+        <div className="text-center">
+            <h4 className="fw-bold mb-3">Login</h4>
+            <p className="text-muted small mb-4">Please enter your username to continue.</p>
+            
             <form onSubmit={handleSubmit}>
-                <input
-                    type="text"
-                    placeholder="Enter your username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                />
-                <button type="submit">Login</button>
+                <div className="mb-3 text-start">
+                    <label className="form-label small fw-bold text-secondary">Username</label>
+                    <input
+                        type="text"
+                        className="form-control"
+                        placeholder="e.g. johndoe"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                    />
+                </div>
+                
+                {error && (
+                    <div className="alert alert-danger py-2 small" role="alert">
+                        {error}
+                    </div>
+                )}
+
+                <button type="submit" className="btn btn-primary w-100 mt-2 py-2">
+                    Sign In
+                </button>
             </form>
-            {error && <p style={{ color: 'red' }}>{error}</p>}
         </div>
     );
 }
