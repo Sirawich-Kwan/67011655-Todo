@@ -28,7 +28,7 @@ function App() {
                         <header className="text-center mb-5">
                             <div className="logo-wrapper">
                                 <img
-                                    src="/cei-logo.png"
+                                    src="/cei_logo.png"
                                     alt="CEI Logo"
                                     style={{ width: "50px" }}
                                 />
