@@ -1,66 +1,65 @@
-// frontend/src/App.js
 import React, { useState, useEffect } from 'react';
 import Login from './components/Login';
 import TodoList from './components/TodoList';
+import './App.css'; // Make sure this is imported!
 
 function App() {
     const [currentUser, setCurrentUser] = useState(null);
 
-    // Check for stored username on initial load
     useEffect(() => {
         const storedUser = localStorage.getItem('todo_username');
-        if (storedUser) {
-            setCurrentUser(storedUser);
-        }
+        if (storedUser) setCurrentUser(storedUser);
     }, []);
 
-    const handleLogin = (username) => {
-        setCurrentUser(username);
-    };
-
+    const handleLogin = (username) => setCurrentUser(username);
     const handleLogout = () => {
-        // Clear username from local storage and state
         localStorage.removeItem('todo_username');
         setCurrentUser(null);
     };
 
-return (
-    <div className="d-flex justify-content-center">
-        <div className="col-12 col-sm-10 col-md-6 col-lg-5">
+    return (
+        <div className="min-vh-100 d-flex align-items-center justify-content-center py-4 px-3">
+            <div className="col-12 col-sm-10 col-md-7 col-lg-5 col-xl-4">
+                
+                <div className="card">
+                    <div className="card-body p-4 p-sm-5">
+                        
+                        {/* BRANDING SECTION */}
+                        <header className="text-center mb-5">
+                            <div className="logo-wrapper">
+                                <img
+                                    src="/cei-logo.png"
+                                    alt="CEI Logo"
+                                    style={{ width: "50px" }}
+                                />
+                            </div>
+                            <h2 className="fw-bold mb-1">CEI Todo</h2>
+                            <p className="text-muted small">Efficiency at your fingertips</p>
+                        </header>
 
-            <div className="card shadow-sm">
-                <div className="card-body">
+                        {/* CONTENT AREA */}
+                        <main>
+                            {currentUser ? (
+                                <TodoList
+                                    username={currentUser}
+                                    onLogout={handleLogout}
+                                />
+                            ) : (
+                                <Login onLogin={handleLogin} />
+                            )}
+                        </main>
 
-                    {/* HEADER */}
-                    <div className="text-center mb-4">
-                        <img
-                            src="/cei-logo.png"
-                            alt="CEI Logo"
-                            style={{ maxWidth: "100px" }}
-                        />
-                        <h4 className="mt-2">CEI Todo</h4>
-                        <p className="text-muted mb-0">
-                            Full Stack Todo App
-                        </p>
                     </div>
-
-                    {/* MAIN CONTENT */}
-                    {currentUser ? (
-                        <TodoList
-                            username={currentUser}
-                            onLogout={handleLogout}
-                        />
-                    ) : (
-                        <Login onLogin={handleLogin} />
-                    )}
-
                 </div>
+
+                {/* OPTIONAL: FOOTER LINKS */}
+                <div className="mt-4 text-center">
+                    <small className="text-muted">© 2024 CEI Professionals</small>
+                </div>
+
             </div>
-
         </div>
-    </div>
-);
-
+    );
 }
 
 export default App;
