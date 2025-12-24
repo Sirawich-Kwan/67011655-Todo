@@ -9,18 +9,12 @@ function TodoList({ username, onLogout }) {
 
     useEffect(() => {
         fetchTodos();
-    }, [username]); // Refetch when username changes (e.g., after login)
+    }, [username]);
 
-    // 1. READ: Fetch all todos for the current user
     const fetchTodos = async () => {
         try {
             const response = await fetch(`${API_URL}/todos/${username}`);
-            
-            if (!response.ok) {
-                console.error('Failed to fetch todos:', response.statusText);
-                return;
-            }
-
+            if (!response.ok) return;
             const data = await response.json();
             setTodos(data);
         } catch (err) {
@@ -28,25 +22,17 @@ function TodoList({ username, onLogout }) {
         }
     };
 
-    // 2. CREATE: Add a new todo
     const handleAddTodo = async (e) => {
         e.preventDefault();
         if (!newTask.trim()) return;
-
         try {
             const response = await fetch(`${API_URL}/todos`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, task: newTask }),
             });
-
-            if (!response.ok) {
-                console.error('Failed to add todo:', response.statusText);
-                return;
-            }
-
+            if (!response.ok) return;
             const newTodo = await response.json();
-            // Add the new item to the beginning of the list
             setTodos([newTodo, ...todos]); 
             setNewTask('');
         } catch (err) {
@@ -54,7 +40,6 @@ function TodoList({ username, onLogout }) {
         }
     };
 
-    // 3. UPDATE: Toggle the 'done' status
     const handleToggleDone = async (id, currentDoneStatus) => {
         const newDoneStatus = !currentDoneStatus;
         try {
@@ -63,13 +48,7 @@ function TodoList({ username, onLogout }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ done: newDoneStatus }),
             });
-
-            if (!response.ok) {
-                console.error('Failed to update todo:', response.statusText);
-                return;
-            }
-
-            // Update the status in the local state immediately
+            if (!response.ok) return;
             setTodos(todos.map(todo => 
                 todo.id === id ? { ...todo, done: newDoneStatus } : todo
             ));
@@ -78,62 +57,80 @@ function TodoList({ username, onLogout }) {
         }
     };
 
-    // 4. DELETE: Remove a todo item
     const handleDeleteTodo = async (id) => {
         try {
             const response = await fetch(`${API_URL}/todos/${id}`, {
                 method: 'DELETE',
             });
-            
-            if (!response.ok) {
-                 console.error('Failed to delete todo:', response.statusText);
-                return;
-            }
-
-            // Filter out the deleted item from the state
+            if (!response.ok) return;
             setTodos(todos.filter(todo => todo.id !== id));
         } catch (err) {
             console.error('Error deleting todo:', err);
         }
     };
 
-    const handleLogout = () => {
-        // Clear storage and trigger state change in App.js
-        localStorage.removeItem('todo_username');
-        onLogout();
-    };
-
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2>Todo List for: {username}</h2>
-                <button onClick={handleLogout}>Logout</button>
+            {/* USER HEADER */}
+            <div className="d-flex justify-content-between align-items-center mb-4">
+                <h5 className="mb-0 fw-bold text-secondary">
+                    User: <span className="text-dark">{username}</span>
+                </h5>
+                <button className="btn btn-outline-danger btn-sm" onClick={onLogout}>
+                    Logout
+                </button>
             </div>
             
-            <form onSubmit={handleAddTodo}>
+            {/* ADD TASK FORM */}
+            <form onSubmit={handleAddTodo} className="input-group mb-4">
                 <input
                     type="text"
-                    placeholder="New Task"
+                    className="form-control shadow-none"
+                    placeholder="Create a new task..."
                     value={newTask}
                     onChange={(e) => setNewTask(e.target.value)}
                 />
-                <button type="submit">Add Task</button>
+                <button className="btn btn-primary px-4" type="submit">
+                    Add Task
+                </button>
             </form>
 
-            <ul>
+            {/* TODO LIST ITEMS */}
+            <div className="list-group list-group-flush">
                 {todos.map(todo => (
-                    <li key={todo.id} style={{ textDecoration: todo.done ? 'line-through' : 'none' }}>
-                        <input
-                            type="checkbox"
-                            checked={!!todo.done} // Convert MySQL's 0/1 to boolean
-                            onChange={() => handleToggleDone(todo.id, todo.done)}
-                        />
-                        {todo.task} 
-                        <small> (Updated: {new Date(todo.updated).toLocaleString()})</small>
-                        <button onClick={() => handleDeleteTodo(todo.id)} style={{ marginLeft: '10px' }}>Delete</button>
-                    </li>
+                    <div key={todo.id} className="list-group-item d-flex align-items-center justify-content-between px-0 py-3 border-bottom">
+                        
+                        <div className="d-flex align-items-start flex-grow-1">
+                            {/* CHECKBOX */}
+                            <input
+                                className="form-check-input me-3 mt-1"
+                                type="checkbox"
+                                checked={!!todo.done}
+                                onChange={() => handleToggleDone(todo.id, todo.done)}
+                                style={{ cursor: 'pointer', width: '1.2rem', height: '1.2rem' }}
+                            />
+                            
+                            {/* TEXT AND TIME STACKED */}
+                            <div className="d-flex flex-column">
+                                <span className={`fw-medium ${todo.done ? 'text-decoration-line-through text-muted' : 'text-dark'}`}>
+                                    {todo.task}
+                                </span>
+                                <small className="text-muted mt-1" style={{ fontSize: '0.7rem' }}>
+                                    Updated: {new Date(todo.updated).toLocaleString()}
+                                </small>
+                            </div>
+                        </div>
+
+                        {/* DELETE BUTTON FIXED TO RIGHT */}
+                        <button 
+                            className="btn btn-link text-danger text-decoration-none btn-sm fw-bold ms-2" 
+                            onClick={() => handleDeleteTodo(todo.id)}
+                        >
+                            Delete
+                        </button>
+                    </div>
                 ))}
-            </ul>
+            </div>
         </div>
     );
 }
