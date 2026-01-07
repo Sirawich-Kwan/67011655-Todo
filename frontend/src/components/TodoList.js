@@ -74,12 +74,19 @@ function TodoList({ username, onLogout }) {
         }
     };
 
+// 1. Updated Background Colors for Group Headers
     const getStatusHeaderClass = (status) => {
         switch (status) {
-            case 'Doing': return 'bg-primary text-white';
-            case 'Done': return 'bg-success text-white';
-            default: return 'bg-secondary text-white';
+            case 'Doing': return { backgroundColor: '#FFF4CC', color: '#856404' }; // Light Yellow
+            case 'Done': return { backgroundColor: '#E6F4EA', color: '#1E4620' };  // Light Green
+            default: return { backgroundColor: '#E8F0FE', color: '#1C3A5F' };    // Light Blue
         }
+    };
+
+    // 2. Date Formatter (d/m/y)
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleString('en-GB'); // en-GB uses day/month/year format
     };
 
     const renderTaskGroup = (statusLabel) => {
@@ -89,26 +96,30 @@ function TodoList({ username, onLogout }) {
 
         return (
             <div className="mb-5" key={statusLabel}>
-                <h6 className={`p-2 rounded-3 fw-bold mb-3 ${getStatusHeaderClass(statusLabel)}`}>
+                {/* Applied custom hex backgrounds here */}
+                <h6 className="p-3 rounded-3 fw-bold mb-3" style={getStatusHeaderClass(statusLabel)}>
                     {statusLabel}
                 </h6>
                 <div className="list-group list-group-flush">
-                    {filteredTasks.length === 0 ? (
-                        <p className="text-muted small ps-2">No tasks in this category.</p>
-                    ) : (
-                        filteredTasks.map(todo => (
+                    {filteredTasks.map(todo => {
+                        // 3. Overdue Logic (Compare target to "now")
+                        const isOverdue = new Date(todo.target_datetime) < new Date() && todo.status !== 'Done';
+                        const dateColor = isOverdue ? '#B91C1C' : '#2563EB'; // Red if overdue, Blue if future
+
+                        return (
                             <div key={todo.id} className="list-group-item px-0 py-3 border-bottom">
                                 <div className="d-flex align-items-start justify-content-between gap-3">
                                     <div className="d-flex flex-column flex-grow-1" style={{ minWidth: '0' }}>
-                                        <span className={`fw-medium mb-1 ${todo.status === 'Done' ? 'text-decoration-line-through text-muted' : 'text-dark'}`} style={{ wordBreak: 'break-word' }}>
+                                        <span className={`fw-medium mb-1 ${todo.status === 'Done' ? 'text-decoration-line-through text-muted' : 'text-dark'}`}>
                                             {todo.task}
                                         </span>
                                         <div className="d-flex flex-column gap-1">
-                                            <small className="text-danger fw-bold" style={{ fontSize: '0.75rem' }}>
-                                                Target: {new Date(todo.target_datetime).toLocaleString()}
+                                            {/* Applied dynamic Date Color (Red/Blue) and d/m/y format */}
+                                            <small className="fw-bold" style={{ fontSize: '0.75rem', color: dateColor }}>
+                                                Target: {formatDate(todo.target_datetime)}
                                             </small>
                                             <small className="text-muted" style={{ fontSize: '0.65rem' }}>
-                                                Updated: {new Date(todo.updated).toLocaleString()}
+                                                Updated: {formatDate(todo.updated)}
                                             </small>
                                         </div>
                                     </div>
@@ -117,7 +128,7 @@ function TodoList({ username, onLogout }) {
                                         <select 
                                             className="form-select form-select-sm" 
                                             style={{ width: '95px', fontSize: '0.8rem' }}
-                                            value={todo.status || 'Todo'}
+                                            value={todo.status}
                                             onChange={(e) => handleStatusChange(todo.id, e.target.value)}
                                         >
                                             <option value="Todo">Todo</option>
@@ -133,8 +144,8 @@ function TodoList({ username, onLogout }) {
                                     </div>
                                 </div>
                             </div>
-                        ))
-                    )}
+                        );
+                    })}
                 </div>
             </div>
         );
