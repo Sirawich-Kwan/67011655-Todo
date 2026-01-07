@@ -29,7 +29,8 @@ function TodoList({ username, onLogout }) {
             const response = await fetch(`${API_URL}/todos`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, task: newTask }),
+                // New tasks default to 'Todo'
+                body: JSON.stringify({ username, task: newTask, status: 'Todo' }),
             });
             if (!response.ok) return;
             const newTodo = await response.json();
@@ -40,20 +41,19 @@ function TodoList({ username, onLogout }) {
         }
     };
 
-    const handleToggleDone = async (id, currentDoneStatus) => {
-        const newDoneStatus = !currentDoneStatus;
+    const handleStatusChange = async (id, newStatus) => {
         try {
             const response = await fetch(`${API_URL}/todos/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ done: newDoneStatus }),
+                body: JSON.stringify({ status: newStatus }),
             });
             if (!response.ok) return;
             setTodos(todos.map(todo => 
-                todo.id === id ? { ...todo, done: newDoneStatus } : todo
+                todo.id === id ? { ...todo, status: newStatus } : todo
             ));
         } catch (err) {
-            console.error('Error toggling done status:', err);
+            console.error('Error updating status:', err);
         }
     };
 
@@ -66,6 +66,15 @@ function TodoList({ username, onLogout }) {
             setTodos(todos.filter(todo => todo.id !== id));
         } catch (err) {
             console.error('Error deleting todo:', err);
+        }
+    };
+
+    // Helper to get color based on status
+    const getStatusClass = (status) => {
+        switch (status) {
+            case 'Doing': return 'bg-warning text-dark';
+            case 'Done': return 'bg-success text-white';
+            default: return 'bg-light text-dark border';
         }
     };
 
@@ -98,36 +107,45 @@ function TodoList({ username, onLogout }) {
             {/* TODO LIST ITEMS */}
             <div className="list-group list-group-flush">
                 {todos.map(todo => (
-                    <div key={todo.id} className="list-group-item d-flex align-items-center justify-content-between px-0 py-3 border-bottom">
-                        
-                        <div className="d-flex align-items-start flex-grow-1">
-                            {/* CHECKBOX */}
-                            <input
-                                className="form-check-input me-3 mt-1"
-                                type="checkbox"
-                                checked={!!todo.done}
-                                onChange={() => handleToggleDone(todo.id, todo.done)}
-                                style={{ cursor: 'pointer', width: '1.2rem', height: '1.2rem' }}
-                            />
+                    <div key={todo.id} className="list-group-item px-0 py-3 border-bottom">
+                        <div className="d-flex align-items-center justify-content-between">
                             
-                            {/* TEXT AND TIME STACKED */}
-                            <div className="d-flex flex-column">
-                                <span className={`fw-medium ${todo.done ? 'text-decoration-line-through text-muted' : 'text-dark'}`}>
+                            <div className="d-flex flex-column flex-grow-1">
+                                <span className={`fw-medium ${todo.status === 'Done' ? 'text-decoration-line-through text-muted' : 'text-dark'}`}>
                                     {todo.task}
                                 </span>
-                                <small className="text-muted mt-1" style={{ fontSize: '0.7rem' }}>
-                                    Updated: {new Date(todo.updated).toLocaleString()}
-                                </small>
+                                <div className="mt-2 d-flex align-items-center">
+                                    {/* STATUS BADGE */}
+                                    <span className={`badge ${getStatusClass(todo.status)} me-2`} style={{ fontSize: '0.65rem' }}>
+                                        {todo.status || 'Todo'}
+                                    </span>
+                                    <small className="text-muted" style={{ fontSize: '0.7rem' }}>
+                                        Updated: {new Date(todo.updated).toLocaleString()}
+                                    </small>
+                                </div>
+                            </div>
+
+                            {/* STATUS DROPDOWN */}
+                            <div className="d-flex align-items-center">
+                                <select 
+                                    className="form-select form-select-sm me-2" 
+                                    style={{ width: 'auto', fontSize: '0.8rem' }}
+                                    value={todo.status || 'Todo'}
+                                    onChange={(e) => handleStatusChange(todo.id, e.target.value)}
+                                >
+                                    <option value="Todo">Todo</option>
+                                    <option value="Doing">Doing</option>
+                                    <option value="Done">Done</option>
+                                </select>
+
+                                <button 
+                                    className="btn btn-link text-danger text-decoration-none btn-sm fw-bold" 
+                                    onClick={() => handleDeleteTodo(todo.id)}
+                                >
+                                    Delete
+                                </button>
                             </div>
                         </div>
-
-                        {/* DELETE BUTTON FIXED TO RIGHT */}
-                        <button 
-                            className="btn btn-link text-danger text-decoration-none btn-sm fw-bold ms-2" 
-                            onClick={() => handleDeleteTodo(todo.id)}
-                        >
-                            Delete
-                        </button>
                     </div>
                 ))}
             </div>
