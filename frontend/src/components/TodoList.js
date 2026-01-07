@@ -6,6 +6,7 @@ const API_URL = process.env.REACT_APP_API_URL;
 function TodoList({ username, onLogout }) {
     const [todos, setTodos] = useState([]);
     const [newTask, setNewTask] = useState('');
+    const [targetDate, setTargetDate] = useState('');
 
     useEffect(() => {
         fetchTodos();
@@ -24,17 +25,24 @@ function TodoList({ username, onLogout }) {
 
     const handleAddTodo = async (e) => {
         e.preventDefault();
-        if (!newTask.trim()) return;
+        if (!newTask.trim() || !targetDate) {
+            alert("Please provide both a task and a target date.");
+            return;
+        }
         try {
             const response = await fetch(`${API_URL}/todos`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, task: newTask, status: 'Todo' }),
+                body: JSON.stringify({ 
+                    username, 
+                    task: newTask, 
+                    target_datetime: targetDate 
+                }),
             });
             if (!response.ok) return;
-            const newTodo = await response.json();
-            setTodos([newTodo, ...todos]); 
             setNewTask('');
+            setTargetDate('');
+            fetchTodos(); // Refresh to ensure correct grouping
         } catch (err) {
             console.error('Error adding todo:', err);
         }
@@ -48,9 +56,7 @@ function TodoList({ username, onLogout }) {
                 body: JSON.stringify({ status: newStatus }),
             });
             if (!response.ok) return;
-            setTodos(todos.map(todo => 
-                todo.id === id ? { ...todo, status: newStatus } : todo
-            ));
+            fetchTodos(); // Refresh to move item between groups
         } catch (err) {
             console.error('Error updating status:', err);
         }
@@ -68,18 +74,74 @@ function TodoList({ username, onLogout }) {
         }
     };
 
-    // Helper to get color based on status
-    const getStatusClass = (status) => {
+    const getStatusHeaderClass = (status) => {
         switch (status) {
-            case 'Doing': return 'bg-warning text-dark';
+            case 'Doing': return 'bg-primary text-white';
             case 'Done': return 'bg-success text-white';
-            default: return 'bg-light text-dark border';
+            default: return 'bg-secondary text-white';
         }
+    };
+
+    const renderTaskGroup = (statusLabel) => {
+        const filteredTasks = todos
+            .filter(t => t.status === statusLabel)
+            .sort((a, b) => new Date(b.target_datetime) - new Date(a.target_datetime));
+
+        return (
+            <div className="mb-5" key={statusLabel}>
+                <h6 className={`p-2 rounded-3 fw-bold mb-3 ${getStatusHeaderClass(statusLabel)}`}>
+                    {statusLabel}
+                </h6>
+                <div className="list-group list-group-flush">
+                    {filteredTasks.length === 0 ? (
+                        <p className="text-muted small ps-2">No tasks in this category.</p>
+                    ) : (
+                        filteredTasks.map(todo => (
+                            <div key={todo.id} className="list-group-item px-0 py-3 border-bottom">
+                                <div className="d-flex align-items-start justify-content-between gap-3">
+                                    <div className="d-flex flex-column flex-grow-1" style={{ minWidth: '0' }}>
+                                        <span className={`fw-medium mb-1 ${todo.status === 'Done' ? 'text-decoration-line-through text-muted' : 'text-dark'}`} style={{ wordBreak: 'break-word' }}>
+                                            {todo.task}
+                                        </span>
+                                        <div className="d-flex flex-column gap-1">
+                                            <small className="text-danger fw-bold" style={{ fontSize: '0.75rem' }}>
+                                                Target: {new Date(todo.target_datetime).toLocaleString()}
+                                            </small>
+                                            <small className="text-muted" style={{ fontSize: '0.65rem' }}>
+                                                Updated: {new Date(todo.updated).toLocaleString()}
+                                            </small>
+                                        </div>
+                                    </div>
+
+                                    <div className="d-flex align-items-center gap-2 pt-1">
+                                        <select 
+                                            className="form-select form-select-sm" 
+                                            style={{ width: '95px', fontSize: '0.8rem' }}
+                                            value={todo.status || 'Todo'}
+                                            onChange={(e) => handleStatusChange(todo.id, e.target.value)}
+                                        >
+                                            <option value="Todo">Todo</option>
+                                            <option value="Doing">Doing</option>
+                                            <option value="Done">Done</option>
+                                        </select>
+                                        <button 
+                                            className="btn btn-link text-danger text-decoration-none btn-sm fw-bold p-0 ms-1" 
+                                            onClick={() => handleDeleteTodo(todo.id)}
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
+        );
     };
 
     return (
         <div>
-            {/* USER HEADER */}
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h5 className="mb-0 fw-bold text-secondary">
                     User: <span className="text-dark">{username}</span>
@@ -89,70 +151,31 @@ function TodoList({ username, onLogout }) {
                 </button>
             </div>
             
-            {/* ADD TASK FORM */}
-            <form onSubmit={handleAddTodo} className="input-group mb-4">
-                <input
-                    type="text"
-                    className="form-control shadow-none"
-                    placeholder="Create a new task..."
-                    value={newTask}
-                    onChange={(e) => setNewTask(e.target.value)}
-                />
-                <button className="btn btn-primary px-4" type="submit">
-                    Add Task
-                </button>
+            <form onSubmit={handleAddTodo} className="mb-5">
+                <div className="mb-3">
+                    <input
+                        type="text"
+                        className="form-control shadow-none mb-2"
+                        placeholder="What needs to be done?"
+                        value={newTask}
+                        onChange={(e) => setNewTask(e.target.value)}
+                    />
+                    <div className="input-group">
+                        <span className="input-group-text small bg-light text-muted">Target Date</span>
+                        <input
+                            type="datetime-local"
+                            className="form-control shadow-none"
+                            value={targetDate}
+                            onChange={(e) => setTargetDate(e.target.value)}
+                        />
+                        <button className="btn btn-primary px-4" type="submit">
+                            Add Task
+                        </button>
+                    </div>
+                </div>
             </form>
 
-            {/* TODO LIST ITEMS */}
-            <div className="list-group list-group-flush">
-                {todos.map(todo => (
-                    <div key={todo.id} className="list-group-item px-0 py-3 border-bottom">
-                        {/* Use gap-3 and align-items-start to give more room */}
-                        <div className="d-flex align-items-start justify-content-between gap-3">
-                            
-                            {/* LEFT SIDE: Task Text and Meta Info */}
-                            <div className="d-flex flex-column flex-grow-1" style={{ minWidth: '0' }}>
-                                <span className={`fw-medium mb-1 ${todo.status === 'Done' ? 'text-decoration-line-through text-muted' : 'text-dark'}`} style={{ wordBreak: 'break-word' }}>
-                                    {todo.task}
-                                </span>
-                                
-                                <div className="d-flex flex-wrap align-items-center gap-2">
-                                    {/* STATUS BADGE */}
-                                    <span className={`badge ${getStatusClass(todo.status)}`} style={{ fontSize: '0.65rem', padding: '0.35em 0.65em' }}>
-                                        {todo.status || 'Todo'}
-                                    </span>
-                                    {/* UPDATED TIME - whiteSpace: nowrap prevents weird wrapping */}
-                                    <small className="text-muted" style={{ fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
-                                        Updated: {new Date(todo.updated).toLocaleString()}
-                                    </small>
-                                </div>
-                            </div>
-
-                            {/* RIGHT SIDE: Dropdown and Delete */}
-                            <div className="d-flex align-items-center gap-2 pt-1">
-                                <select 
-                                    className="form-select form-select-sm" 
-                                    style={{ width: '95px', fontSize: '0.8rem' }}
-                                    value={todo.status || 'Todo'}
-                                    onChange={(e) => handleStatusChange(todo.id, e.target.value)}
-                                >
-                                    <option value="Todo">Todo</option>
-                                    <option value="Doing">Doing</option>
-                                    <option value="Done">Done</option>
-                                </select>
-
-                                <button 
-                                    className="btn btn-link text-danger text-decoration-none btn-sm fw-bold p-0 ms-1" 
-                                    onClick={() => handleDeleteTodo(todo.id)}
-                                >
-                                    Delete
-                                </button>
-                            </div>
-
-                        </div>
-                    </div>
-                ))}
-            </div>
+            {['Todo', 'Doing', 'Done'].map(status => renderTaskGroup(status))}
         </div>
     );
 }

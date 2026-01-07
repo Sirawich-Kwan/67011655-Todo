@@ -43,34 +43,28 @@ app.post('/api/login', (req, res) => {
 // API: Todo List (Updated for Statuses)
 // ------------------------------------
 
-// 1. READ: Includes the 'status' column
+// 1. READ: Added target_datetime to SELECT
 app.get('/api/todos/:username', (req, res) => {
     const { username } = req.params;
-    // Selecting 'status' instead of 'done'
-    const sql = 'SELECT id, task, status, updated FROM todo WHERE username = ? ORDER BY id DESC';
+    const sql = 'SELECT id, task, status, updated, target_datetime FROM todo WHERE username = ?';
     db.query(sql, [username], (err, results) => {
         if (err) return res.status(500).send(err);
         res.json(results);
     });
 });
 
-// 2. CREATE: Defaults new tasks to 'Todo'
+// 2. CREATE: Added target_datetime to INSERT
 app.post('/api/todos', (req, res) => {
-    const { username, task } = req.body;
-    const status = req.body.status || 'Todo'; // Default to Todo
-
-    if (!username || !task) {
-        return res.status(400).send({ message: 'Username and task are required' });
-    }
-
-    const sql = 'INSERT INTO todo (username, task, status) VALUES (?, ?, ?)';
-    db.query(sql, [username, task, status], (err, result) => {
+    const { username, task, target_datetime } = req.body; // Receive date from frontend
+    const sql = 'INSERT INTO todo (username, task, status, target_datetime) VALUES (?, ?, "Todo", ?)';
+    db.query(sql, [username, task, target_datetime], (err, result) => {
         if (err) return res.status(500).send(err);
         res.status(201).send({ 
             id: result.insertId, 
             username, 
             task, 
-            status, 
+            status: 'Todo', 
+            target_datetime,
             updated: new Date() 
         });
     });
