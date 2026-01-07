@@ -19,7 +19,7 @@ function App() {
 
     return (
         <div className="min-vh-100 d-flex align-items-center justify-content-center py-4 px-3">
-            <div className="col-12 col-sm-10 col-md-7 col-lg-5 col-xl-4">
+            <div className="col-12 col-sm-10 col-md-8 col-lg-7 col-xl-6">
                 
                 <div className="card">
                     <div className="card-body p-4 p-sm-5">

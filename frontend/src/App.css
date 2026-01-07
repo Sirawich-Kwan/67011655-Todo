@@ -52,3 +52,31 @@ body {
   margin: 0 auto 1.5rem;
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
+
+/* 6. Increase Internal Spacing */
+.card-body {
+  padding: 1.5rem !important; /* Mobile padding */
+}
+
+/* 7. Desktop-Specific Spacing */
+@media (min-width: 576px) {
+  .card-body {
+    padding: 2.5rem !important; /* More breathing room for larger screens */
+  }
+}
+
+/* 8. Fix Select Box and List Spacing */
+.form-select-sm {
+  border-radius: 0.5rem;
+  padding-right: 1.8rem; /* Space for the dropdown arrow */
+  border-color: #e0e0e0;
+}
+
+.list-group-item {
+  transition: background-color 0.2s ease;
+}
+
+/* Optional: Slight hover effect to make the list feel interactive */
+.list-group-item:hover {
+  background-color: #fafafa;
+}

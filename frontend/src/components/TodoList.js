@@ -29,7 +29,6 @@ function TodoList({ username, onLogout }) {
             const response = await fetch(`${API_URL}/todos`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                // New tasks default to 'Todo'
                 body: JSON.stringify({ username, task: newTask, status: 'Todo' }),
             });
             if (!response.ok) return;
@@ -108,28 +107,32 @@ function TodoList({ username, onLogout }) {
             <div className="list-group list-group-flush">
                 {todos.map(todo => (
                     <div key={todo.id} className="list-group-item px-0 py-3 border-bottom">
-                        <div className="d-flex align-items-center justify-content-between">
+                        {/* Use gap-3 and align-items-start to give more room */}
+                        <div className="d-flex align-items-start justify-content-between gap-3">
                             
-                            <div className="d-flex flex-column flex-grow-1">
-                                <span className={`fw-medium ${todo.status === 'Done' ? 'text-decoration-line-through text-muted' : 'text-dark'}`}>
+                            {/* LEFT SIDE: Task Text and Meta Info */}
+                            <div className="d-flex flex-column flex-grow-1" style={{ minWidth: '0' }}>
+                                <span className={`fw-medium mb-1 ${todo.status === 'Done' ? 'text-decoration-line-through text-muted' : 'text-dark'}`} style={{ wordBreak: 'break-word' }}>
                                     {todo.task}
                                 </span>
-                                <div className="mt-2 d-flex align-items-center">
+                                
+                                <div className="d-flex flex-wrap align-items-center gap-2">
                                     {/* STATUS BADGE */}
-                                    <span className={`badge ${getStatusClass(todo.status)} me-2`} style={{ fontSize: '0.65rem' }}>
+                                    <span className={`badge ${getStatusClass(todo.status)}`} style={{ fontSize: '0.65rem', padding: '0.35em 0.65em' }}>
                                         {todo.status || 'Todo'}
                                     </span>
-                                    <small className="text-muted" style={{ fontSize: '0.7rem' }}>
+                                    {/* UPDATED TIME - whiteSpace: nowrap prevents weird wrapping */}
+                                    <small className="text-muted" style={{ fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
                                         Updated: {new Date(todo.updated).toLocaleString()}
                                     </small>
                                 </div>
                             </div>
 
-                            {/* STATUS DROPDOWN */}
-                            <div className="d-flex align-items-center">
+                            {/* RIGHT SIDE: Dropdown and Delete */}
+                            <div className="d-flex align-items-center gap-2 pt-1">
                                 <select 
-                                    className="form-select form-select-sm me-2" 
-                                    style={{ width: 'auto', fontSize: '0.8rem' }}
+                                    className="form-select form-select-sm" 
+                                    style={{ width: '95px', fontSize: '0.8rem' }}
                                     value={todo.status || 'Todo'}
                                     onChange={(e) => handleStatusChange(todo.id, e.target.value)}
                                 >
@@ -139,12 +142,13 @@ function TodoList({ username, onLogout }) {
                                 </select>
 
                                 <button 
-                                    className="btn btn-link text-danger text-decoration-none btn-sm fw-bold" 
+                                    className="btn btn-link text-danger text-decoration-none btn-sm fw-bold p-0 ms-1" 
                                     onClick={() => handleDeleteTodo(todo.id)}
                                 >
                                     Delete
                                 </button>
                             </div>
+
                         </div>
                     </div>
                 ))}
