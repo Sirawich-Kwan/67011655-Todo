@@ -4,13 +4,28 @@ import React, { useState, useEffect } from 'react';
 const API_URL = process.env.REACT_APP_API_URL;
 
 function TodoList({ username, onLogout }) {
+    // --- HOOKS MUST BE INSIDE HERE ---
     const [todos, setTodos] = useState([]);
+    const [users, setUsers] = useState([]); // List of all users for dropdown
+    const [targetUser, setTargetUser] = useState(username); // Who is getting the task
     const [newTask, setNewTask] = useState('');
     const [targetDate, setTargetDate] = useState('');
 
     useEffect(() => {
         fetchTodos();
+        fetchUsers(); // Fetch users when component loads
     }, [username]);
+
+    const fetchUsers = async () => {
+        try {
+            const response = await fetch(`${API_URL}/users`);
+            if (!response.ok) return;
+            const data = await response.json();
+            setUsers(data);
+        } catch (err) {
+            console.error('Error fetching users:', err);
+        }
+    };
 
     const fetchTodos = async () => {
         try {
@@ -30,19 +45,20 @@ function TodoList({ username, onLogout }) {
             return;
         }
         try {
-            const response = await fetch(`${API_URL}/todos`, {
+            await fetch(`${API_URL}/todos`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    username, 
+                    username: targetUser, // Targeted recipient
                     task: newTask, 
-                    target_datetime: targetDate 
+                    target_datetime: targetDate,
+                    assigned_by: username // You as the assigner
                 }),
             });
-            if (!response.ok) return;
             setNewTask('');
             setTargetDate('');
-            fetchTodos(); // Refresh to ensure correct grouping
+            setTargetUser(username); // Reset dropdown to yourself
+            fetchTodos(); 
         } catch (err) {
             console.error('Error adding todo:', err);
         }
@@ -56,7 +72,7 @@ function TodoList({ username, onLogout }) {
                 body: JSON.stringify({ status: newStatus }),
             });
             if (!response.ok) return;
-            fetchTodos(); // Refresh to move item between groups
+            fetchTodos();
         } catch (err) {
             console.error('Error updating status:', err);
         }
@@ -74,19 +90,18 @@ function TodoList({ username, onLogout }) {
         }
     };
 
-// 1. Updated Background Colors for Group Headers
     const getStatusHeaderClass = (status) => {
         switch (status) {
-            case 'Doing': return { backgroundColor: '#FFF4CC', color: '#856404' }; // Light Yellow
-            case 'Done': return { backgroundColor: '#E6F4EA', color: '#1E4620' };  // Light Green
-            default: return { backgroundColor: '#E8F0FE', color: '#1C3A5F' };    // Light Blue
+            case 'Doing': return { backgroundColor: '#FFF4CC', color: '#856404' };
+            case 'Done': return { backgroundColor: '#E6F4EA', color: '#1E4620' };
+            default: return { backgroundColor: '#E8F0FE', color: '#1C3A5F' };
         }
     };
 
-    // 2. Date Formatter (d/m/y)
     const formatDate = (dateString) => {
+        if (!dateString) return "No date";
         const date = new Date(dateString);
-        return date.toLocaleString('en-GB'); // en-GB uses day/month/year format
+        return date.toLocaleString('en-GB');
     };
 
     const renderTaskGroup = (statusLabel) => {
@@ -96,15 +111,13 @@ function TodoList({ username, onLogout }) {
 
         return (
             <div className="mb-5" key={statusLabel}>
-                {/* Applied custom hex backgrounds here */}
                 <h6 className="p-3 rounded-3 fw-bold mb-3" style={getStatusHeaderClass(statusLabel)}>
                     {statusLabel}
                 </h6>
                 <div className="list-group list-group-flush">
                     {filteredTasks.map(todo => {
-                        // 3. Overdue Logic (Compare target to "now")
                         const isOverdue = new Date(todo.target_datetime) < new Date() && todo.status !== 'Done';
-                        const dateColor = isOverdue ? '#B91C1C' : '#2563EB'; // Red if overdue, Blue if future
+                        const dateColor = isOverdue ? '#B91C1C' : '#2563EB';
 
                         return (
                             <div key={todo.id} className="list-group-item px-0 py-3 border-bottom">
@@ -114,13 +127,19 @@ function TodoList({ username, onLogout }) {
                                             {todo.task}
                                         </span>
                                         <div className="d-flex flex-column gap-1">
-                                            {/* Applied dynamic Date Color (Red/Blue) and d/m/y format */}
                                             <small className="fw-bold" style={{ fontSize: '0.75rem', color: dateColor }}>
                                                 Target: {formatDate(todo.target_datetime)}
                                             </small>
                                             <small className="text-muted" style={{ fontSize: '0.65rem' }}>
                                                 Updated: {formatDate(todo.updated)}
                                             </small>
+                                            
+                                            {/* --- NUMBER 5: ASSIGNED BY DISPLAY --- */}
+                                            {todo.assigned_by && todo.assigned_by !== todo.username && (
+                                                <small className="text-info d-block mt-1" style={{ fontSize: '0.7rem', fontStyle: 'italic' }}>
+                                                    Assigned by: {todo.assigned_by}
+                                                </small>
+                                            )}
                                         </div>
                                     </div>
 
@@ -171,7 +190,7 @@ function TodoList({ username, onLogout }) {
                         value={newTask}
                         onChange={(e) => setNewTask(e.target.value)}
                     />
-                    <div className="input-group">
+                    <div className="input-group mb-2">
                         <span className="input-group-text small bg-light text-muted">Target Date</span>
                         <input
                             type="datetime-local"
@@ -179,6 +198,20 @@ function TodoList({ username, onLogout }) {
                             value={targetDate}
                             onChange={(e) => setTargetDate(e.target.value)}
                         />
+                    </div>
+                    <div className="input-group">
+                        <span className="input-group-text small bg-light text-muted">Assign To</span>
+                        <select 
+                            className="form-select shadow-none"
+                            value={targetUser}
+                            onChange={(e) => setTargetUser(e.target.value)}
+                        >
+                            {users.map(u => (
+                                <option key={u.username} value={u.username}>
+                                    {u.username === username ? "Myself" : u.username}
+                                </option>
+                            ))}
+                        </select>
                         <button className="btn btn-primary px-4" type="submit">
                             Add Task
                         </button>

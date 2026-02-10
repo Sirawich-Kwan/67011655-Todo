@@ -104,3 +104,41 @@ app.delete('/api/todos/:id', (req, res) => {
 app.listen(port, () => {
     console.log(`Server listening at http://localhost:${port}`);
 });
+
+// ADD "ALTER TABLE todo ADD COLUMN assigned_by VARCHAR(255);" to mysql
+
+// 1. ADD THIS NEW ROUTE: To get the list of users for your dropdown
+app.get('/api/users', (req, res) => {
+    // This looks at your 'users' table (where passwords/usernames are)
+    const sql = 'SELECT username FROM users'; 
+    db.query(sql, (err, results) => {
+        if (err) return res.status(500).send(err);
+        res.json(results);
+    });
+});
+
+// 2. UPDATE YOUR POST ROUTE: To include 'assigned_by' and 'target_datetime'
+app.post('/api/todos', (req, res) => {
+    const { username, task, target_datetime, assigned_by } = req.body;
+    
+    // We include all 4 custom fields now
+    const sql = 'INSERT INTO todo (username, task, status, target_datetime, assigned_by) VALUES (?, ?, "Todo", ?, ?)';
+    
+    db.query(sql, [username, task, target_datetime, assigned_by], (err, result) => {
+        if (err) {
+            console.error("Insert error:", err);
+            return res.status(500).send(err);
+        }
+        res.status(201).send({ id: result.insertId, ...req.body });
+    });
+});
+
+// 3. UPDATE YOUR GET ROUTE: Make sure it picks up the 'assigned_by' column
+app.get('/api/todos/:username', (req, res) => {
+    const { username } = req.params;
+    const sql = 'SELECT * FROM todo WHERE username = ? ORDER BY target_datetime ASC';
+    db.query(sql, [username], (err, results) => {
+        if (err) return res.status(500).send(err);
+        res.json(results);
+    });
+});
