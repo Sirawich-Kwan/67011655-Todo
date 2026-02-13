@@ -90,42 +90,37 @@ app.post('/api/todos', (req, res) => {
 // 3. UPDATE: Status & Record History (Professional Logic)
 app.put('/api/todos/:id', (req, res) => {
     const { id } = req.params;
-    const { status, performed_by } = req.body; 
+    // ADDED: resolution_comment here
+    const { status, performed_by, resolution_comment } = req.body; 
 
-    // 1. Get current status first
     db.query('SELECT status FROM tickets WHERE id = ?', [id], (err, current) => {
         if (err) return res.status(500).send({ message: "Database read error" });
         if (current.length === 0) return res.status(404).send({ message: 'Ticket not found' });
         
         const oldStatus = current[0].status;
 
-        // 2. Update the ticket status
-        const sqlUpdate = 'UPDATE tickets SET status = ? WHERE id = ?';
-        db.query(sqlUpdate, [status, id], (err) => {
+        // UPDATED: Now updating TWO columns: status and resolution_comment
+        const sqlUpdate = 'UPDATE tickets SET status = ?, resolution_comment = ? WHERE id = ?';
+        db.query(sqlUpdate, [status, resolution_comment || null, id], (err) => {
             if (err) {
                 console.error("UPDATE ERROR:", err.sqlMessage);
                 return res.status(500).send({ message: err.sqlMessage });
             }
 
-            // 3. Log to history (Wrapped in a check to prevent crashing)
-            // Note: Ensure these column names match your ticket_history table exactly!
             const historySql = `
                 INSERT INTO ticket_history (ticket_id, action_type, old_value, new_value, performed_by) 
                 VALUES (?, "STATUS_CHANGE", ?, ?, ?)`;
             
             db.query(historySql, [id, oldStatus, status, performed_by], (histErr) => {
                 if (histErr) {
-                    // We log the error to the terminal, but we DON'T crash the response
-                    console.error("HISTORY LOG ERROR (Check column names):", histErr.sqlMessage);
+                    console.error("HISTORY LOG ERROR:", histErr.sqlMessage);
                 }
                 
-                // Still send success because the main status actually changed
                 res.send({ success: true, message: 'Status updated' });
             });
         });
     });
 });
-
 // ------------------------------------
 // API: Users List (For Dropdown)
 // ------------------------------------
