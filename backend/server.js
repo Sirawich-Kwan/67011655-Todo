@@ -49,8 +49,14 @@ app.post('/api/login', (req, res) => {
 
 // 1. READ: Get tickets by User ID (not username)
 app.get('/api/todos/:userId', (req, res) => {
-    const { userId } = req.params;
-    // Logic: Join with users table to get the name of the person who assigned it
+    // We force userId to be a number just in case
+    const userId = parseInt(req.params.userId);
+
+    if (isNaN(userId)) {
+        return res.status(400).send({ message: "Invalid User ID" });
+    }
+
+    // Professional SQL: Use assignee_id to find tickets for this user
     const sql = `
         SELECT t.*, u.username as creator_name 
         FROM tickets t 
@@ -59,7 +65,10 @@ app.get('/api/todos/:userId', (req, res) => {
         ORDER BY t.deadline ASC`;
         
     db.query(sql, [userId], (err, results) => {
-        if (err) return res.status(500).send(err);
+        if (err) {
+            console.error("FETCH ERROR:", err.sqlMessage);
+            return res.status(500).send({ message: err.sqlMessage });
+        }
         res.json(results);
     });
 });
