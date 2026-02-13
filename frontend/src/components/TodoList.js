@@ -13,10 +13,11 @@ function TodoList({ user, onLogout }) {
     const [targetDate, setTargetDate] = useState('');
 
     useEffect(() => {
+    if (myId) { // Only fetch if we have a valid ID
         fetchTodos();
         fetchUsers();
-    }, [myId]); // Logic: Refresh when the User ID changes
-
+    }
+}, [myId]);
     const fetchUsers = async () => {
         try {
             const response = await fetch(`${API_URL}/users`);
@@ -40,33 +41,47 @@ function TodoList({ user, onLogout }) {
         }
     };
 
-    const handleAddTodo = async (e) => {
-        e.preventDefault();
-        if (!newTaskTitle.trim() || !targetDate) {
-            alert("Please provide both a title and a deadline.");
-            return;
-        }
-        try {
-            await fetch(`${API_URL}/todos`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    assignee_id: targetUserId, // Professional: Using ID
-                    title: newTaskTitle,        // Professional: Using 'title' not 'task'
-                    summary: "User created task", 
-                    deadline: targetDate,      // Professional: Using 'deadline'
-                    assigned_by: myId          // Logic: Record WHO created it
-                }),
-            });
-            setNewTaskTitle('');
-            setTargetDate('');
-            setTargetUserId(myId); 
-            fetchTodos(); 
-        } catch (err) {
-            console.error('Error adding ticket:', err);
-        }
+const handleAddTodo = async (e) => {
+    e.preventDefault();
+    
+    // Check for empty inputs
+    if (!newTaskTitle.trim() || !targetDate) {
+        alert("Please provide both a title and a deadline.");
+        return;
+    }
+
+    const payload = { 
+        assignee_id: Number(targetUserId), // Ensure numeric ID
+        title: newTaskTitle,
+        summary: "Manual task creation", 
+        deadline: targetDate,
+        assigned_by: myId 
     };
 
+    try {
+        const response = await fetch(`${API_URL}/todos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (response.ok) {
+            // SUCCESS
+            setNewTaskTitle('');
+            setTargetDate('');
+            // Optional: Don't reset targetUserId so you can assign multiple to the same person
+            fetchTodos(); 
+        } else {
+            // SERVER ERROR (e.g., Database column name mismatch)
+            const errorData = await response.json();
+            alert(`Server Error: ${errorData.message || 'Check server logs'}`);
+        }
+    } catch (err) {
+        // NETWORK ERROR (e.g., Server is down)
+        console.error('Network Error:', err);
+        alert("Could not connect to the server. Is your backend running?");
+    }
+};
     const handleStatusChange = async (ticketId, newStatus) => {
         try {
             // Logic: Pass 'performed_by' to the backend for the History Log (EP04-ST003)

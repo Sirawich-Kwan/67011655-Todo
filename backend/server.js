@@ -64,13 +64,22 @@ app.get('/api/todos/:userId', (req, res) => {
     });
 });
 
-// 2. CREATE: New Ticket
 app.post('/api/todos', (req, res) => {
+    // We remove assigned_by because it's not in your tickets table yet
     const { title, summary, assignee_id, deadline } = req.body;
+    
+    // Check if any required field is missing
+    if (!title || !assignee_id) {
+        return res.status(400).send({ message: "Missing title or assignee" });
+    }
+
     const sql = 'INSERT INTO tickets (title, summary, assignee_id, deadline, status) VALUES (?, ?, ?, ?, "New")';
     
     db.query(sql, [title, summary, assignee_id, deadline], (err, result) => {
-        if (err) return res.status(500).send(err);
+        if (err) {
+            console.error("DB Error:", err); // This will show in your terminal
+            return res.status(500).send({ message: err.message });
+        }
         res.status(201).send({ id: result.insertId, ...req.body });
     });
 });
