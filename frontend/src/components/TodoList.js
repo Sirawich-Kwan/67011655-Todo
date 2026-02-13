@@ -11,6 +11,19 @@ function TodoList({ user, onLogout }) {
     const [targetUserId, setTargetUserId] = useState(myId); // Logic: Use ID for assignment
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [targetDate, setTargetDate] = useState('');
+    const [selectedHistory, setSelectedHistory] = useState([]);
+    const [viewingHistoryId, setViewingHistoryId] = useState(null);
+
+const fetchHistory = async (ticketId) => {
+    try {
+        const response = await fetch(`${API_URL}/history/${ticketId}`);
+        const data = await response.json();
+        setSelectedHistory(data);
+        setViewingHistoryId(ticketId);
+    } catch (err) {
+        console.error("Error fetching history:", err);
+    }
+};
 
     useEffect(() => {
     if (myId) { // Only fetch if we have a valid ID
@@ -173,6 +186,13 @@ const renderTaskGroup = (statusLabel) => {
                                 </div>
 
                                 <div className="d-flex align-items-center gap-2">
+                                    <button 
+        className="btn btn-sm btn-outline-secondary"
+        style={{ fontSize: '0.7rem' }}
+        onClick={() => fetchHistory(todo.id)}
+    >
+        History
+    </button>
                                     <select 
                                         className="form-select form-select-sm" 
                                         style={{ width: '105px', fontSize: '0.8rem' }}
@@ -194,82 +214,63 @@ const renderTaskGroup = (statusLabel) => {
         </div>
     );
 };
+/* ... your existing imports and functions stay the same ... */
 
 return (
     <div className="container py-4">
-        {/* User Header - Clean Version */}
+        {/* 1. Header */}
         <div className="d-flex justify-content-between align-items-center mb-4">
             <h5 className="mb-0 fw-bold text-dark">{myName}</h5>
             <button className="btn btn-outline-danger btn-sm px-3" onClick={onLogout}>Logout</button>
         </div>
 
-        {/* Workload Summary Stat */}
-        <div className="row mb-4">
-            <div className="col-12">
-                <div className="p-3 bg-white border rounded-3 d-flex align-items-center justify-content-between shadow-sm">
-                    <span className="text-muted small fw-bold text-uppercase" style={{letterSpacing: '1px'}}>Active Workload</span>
-                    <span className="h4 mb-0 fw-bold text-primary">
-                        {todos.filter(t => ['New', 'Assigned', 'Solving'].includes(t.status)).length}
-                    </span>
-                </div>
-            </div>
-        </div>
+        {/* ... (Workload Stat, Create Form, Current Workload, Archive View) ... */}
+        {/* Keep all your existing sections here */}
         
-        {/* Create Ticket Form */}
-        <form onSubmit={handleAddTodo} className="mb-5 bg-white p-4 rounded-3 border shadow-sm">
-            <div className="mb-3">
-                <label className="form-label small fw-bold text-secondary">Task Title</label>
-                <input
-                    type="text"
-                    className="form-control"
-                    placeholder="What needs to be done?"
-                    value={newTaskTitle}
-                    onChange={(e) => setNewTaskTitle(e.target.value)}
-                />
-            </div>
-            
-            <div className="row g-2 mb-3">
-                <div className="col-md-6">
-                    <label className="form-label small fw-bold text-secondary">Deadline</label>
-                    <input
-                        type="datetime-local"
-                        className="form-control"
-                        value={targetDate}
-                        onChange={(e) => setTargetDate(e.target.value)}
-                    />
-                </div>
-                <div className="col-md-6">
-                    <label className="form-label small fw-bold text-secondary">Assign To</label>
-                    <select 
-                        className="form-select"
-                        value={targetUserId}
-                        onChange={(e) => setTargetUserId(e.target.value)}
-                    >
-                        {users.map(u => (
-                            <option key={u.id} value={u.id}>
-                                {Number(u.id) === Number(myId) ? `Myself (${myName})` : u.username}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-            </div>
-            <button className="btn btn-primary w-100 fw-bold py-2" type="submit">Create Ticket</button>
-        </form>
-
-        {/* Active Workload Section */}
-        <div className="active-workload">
-            <h5 className="mb-4 text-primary fw-bold">📂 Current Workload</h5>
-            {['New', 'Assigned', 'Solving'].map(status => renderTaskGroup(status))}
-        </div>
-
-        <hr className="my-5 opacity-10" />
-
-        {/* Finished Section */}
         <div className="archive-view opacity-75">
             <h6 className="mb-4 text-muted fw-bold">✔️ Completed & History</h6>
             {['Solved', 'Failed'].map(status => renderTaskGroup(status))}
         </div>
-    </div>
+
+        {/* 2. MOVE THE HISTORY LOG BLOCK HERE (Inside the main div) */}
+        {viewingHistoryId && (
+            <div className="position-fixed bottom-0 start-50 translate-middle-x mb-4 p-4 bg-dark text-white rounded-3 shadow-lg w-75" style={{ zIndex: 1050, maxHeight: '400px', overflowY: 'auto' }}>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h6 className="mb-0">📜 Ticket History (ID: {viewingHistoryId})</h6>
+                    <button className="btn-close btn-close-white" onClick={() => setViewingHistoryId(null)}></button>
+                </div>
+                <div className="table-responsive">
+                    <table className="table table-dark table-hover table-sm small mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>User</th>
+                                <th>Action</th>
+                                <th>From</th>
+                                <th>To</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {selectedHistory.map((log) => (
+                                <tr key={log.id}>
+                                    <td className="text-muted">{new Date(log.created_at).toLocaleString()}</td>
+                                    <td className="text-info">{log.performer_name}</td>
+                                    <td>{log.action_type}</td>
+                                    <td className="text-secondary">{log.old_value}</td>
+                                    <td className="text-success fw-bold">{log.new_value}</td>
+                                </tr>
+                            ))}
+                            {selectedHistory.length === 0 && (
+                                <tr>
+                                    <td colSpan="5" className="text-center py-3 text-muted">No history found.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        )}
+    </div> // This is the final closing tag for the main container
 );
 }
 

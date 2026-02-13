@@ -135,3 +135,20 @@ app.get('/api/users', (req, res) => {
 app.listen(port, () => {
     console.log(`Server listening at http://localhost:${port}`);
 });
+
+
+// Get history for a specific ticket
+app.get('/api/history/:ticketId', (req, res) => {
+    const { ticketId } = req.params;
+    const sql = `
+        SELECT h.*, u.username as performer_name 
+        FROM ticket_history h
+        JOIN users u ON h.performed_by = u.id
+        WHERE h.ticket_id = ?
+        ORDER BY h.created_at DESC`;
+
+    db.query(sql, [ticketId], (err, results) => {
+        if (err) return res.status(500).send(err);
+        res.json(results);
+    });
+});
