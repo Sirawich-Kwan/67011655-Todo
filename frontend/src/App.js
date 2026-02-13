@@ -1,30 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import Login from './components/Login';
 import TodoList from './components/TodoList';
-import './App.css'; // Make sure this is imported!
+import './App.css';
 
 function App() {
+    // Now stores the whole user object: { id, username, role }
     const [currentUser, setCurrentUser] = useState(null);
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('todo_username');
-        if (storedUser) setCurrentUser(storedUser);
+        const storedId = localStorage.getItem('userId');
+        const storedName = localStorage.getItem('todo_username');
+        const storedRole = localStorage.getItem('userRole');
+
+        if (storedId && storedName) {
+            setCurrentUser({ 
+                id: storedId, 
+                username: storedName, 
+                role: storedRole 
+            });
+        }
     }, []);
 
-    const handleLogin = (username) => setCurrentUser(username);
+    // Accepts the user object from Login.js
+    const handleLogin = (userObject) => {
+        setCurrentUser(userObject);
+    };
+
     const handleLogout = () => {
         localStorage.removeItem('todo_username');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userRole');
         setCurrentUser(null);
     };
 
     return (
         <div className="min-vh-100 d-flex align-items-center justify-content-center py-4 px-3">
             <div className="col-12 col-sm-10 col-md-8 col-lg-7 col-xl-6">
-                
                 <div className="card">
                     <div className="card-body p-4 p-sm-5">
-                        
-                        {/* BRANDING SECTION */}
                         <header className="text-center mb-5">
                             <div className="logo-wrapper">
                                 <img
@@ -37,26 +50,22 @@ function App() {
                             <p className="text-muted small">Efficiency at your fingertips</p>
                         </header>
 
-                        {/* CONTENT AREA */}
                         <main>
                             {currentUser ? (
                                 <TodoList
-                                    username={currentUser}
+                                    // Pass the whole user object to TodoList
+                                    user={currentUser}
                                     onLogout={handleLogout}
                                 />
                             ) : (
                                 <Login onLogin={handleLogin} />
                             )}
                         </main>
-
                     </div>
                 </div>
-
-                {/* OPTIONAL: FOOTER LINKS */}
                 <div className="mt-4 text-center">
-                    <small className="text-muted">© 2025 CEI Todo App. All rights reserved.</small>
+                    <small className="text-muted">© 2026 CEI Todo App. All rights reserved.</small>
                 </div>
-
             </div>
         </div>
     );
