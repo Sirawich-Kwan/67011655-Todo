@@ -22,7 +22,7 @@ db.connect(err => {
         console.error('Error connecting to MySQL:', err);
         return;
     }
-    console.log('Connected to MySQL Database.');
+    console.log('Connected to MySQL Database (Professional Schema).');
 });
 
 // ------------------------------------
@@ -30,81 +30,79 @@ db.connect(err => {
 // ------------------------------------
 app.post('/api/login', (req, res) => {
     const { username } = req.body;
-    if (!username) return res.status(400).send({ message: 'Username is required' });
-    
-    res.send({ 
-        success: true, 
-        message: 'Login successful', 
-        user: { username }
+    // Logic: We need ID and ROLE for the app to function properly
+    const sql = 'SELECT id, username, role FROM users WHERE username = ?';
+    db.query(sql, [username], (err, results) => {
+        if (err) return res.status(500).send(err);
+        if (results.length === 0) return res.status(401).send({ message: 'User not found' });
+        
+        res.send({ 
+            success: true, 
+            user: results[0] 
+        });
     });
 });
 
 // ------------------------------------
-// API: Todo List
+// API: Tickets (Replacing old Todo logic)
 // ------------------------------------
 
-// 1. READ: Get all tasks for a specific user
-app.get('/api/todos/:username', (req, res) => {
-    const { username } = req.params;
-    // Using * ensures we get id, task, status, updated, target_datetime, AND assigned_by
-    const sql = 'SELECT * FROM todo WHERE username = ? ORDER BY target_datetime ASC';
-    db.query(sql, [username], (err, results) => {
+// 1. READ: Get tickets by User ID (not username)
+app.get('/api/todos/:userId', (req, res) => {
+    const { userId } = req.params;
+    // Logic: Join with users table to get the name of the person who assigned it
+    const sql = `
+        SELECT t.*, u.username as creator_name 
+        FROM tickets t 
+        LEFT JOIN users u ON t.assignee_id = u.id 
+        WHERE t.assignee_id = ? 
+        ORDER BY t.deadline ASC`;
+        
+    db.query(sql, [userId], (err, results) => {
         if (err) return res.status(500).send(err);
         res.json(results);
     });
 });
 
-// 2. CREATE: Add a new task with "assigned_by" support
+// 2. CREATE: New Ticket
 app.post('/api/todos', (req, res) => {
-    const { username, task, target_datetime, assigned_by } = req.body;
-    const sql = 'INSERT INTO todo (username, task, status, target_datetime, assigned_by) VALUES (?, ?, "Todo", ?, ?)';
+    const { title, summary, assignee_id, deadline } = req.body;
+    const sql = 'INSERT INTO tickets (title, summary, assignee_id, deadline, status) VALUES (?, ?, ?, ?, "New")';
     
-    db.query(sql, [username, task, target_datetime, assigned_by], (err, result) => {
-        if (err) {
-            console.error("Insert error:", err);
-            return res.status(500).send(err);
-        }
-        res.status(201).send({ 
-            id: result.insertId, 
-            ...req.body,
-            status: 'Todo',
-            updated: new Date() 
+    db.query(sql, [title, summary, assignee_id, deadline], (err, result) => {
+        if (err) return res.status(500).send(err);
+        res.status(201).send({ id: result.insertId, ...req.body });
+    });
+});
+
+// 3. UPDATE: Status & Record History (Professional Logic)
+app.put('/api/todos/:id', (req, res) => {
+    const { id } = req.params;
+    const { status, performed_by } = req.body; 
+
+    // First, find old status to record in history
+    db.query('SELECT status FROM tickets WHERE id = ?', [id], (err, current) => {
+        if (err || current.length === 0) return res.status(404).send('Ticket not found');
+        const oldStatus = current[0].status;
+
+        const sql = 'UPDATE tickets SET status = ? WHERE id = ?';
+        db.query(sql, [status, id], (err) => {
+            if (err) return res.status(500).send(err);
+
+            // LOG HISTORY: Every time a status changes, it's recorded here
+            const historySql = 'INSERT INTO ticket_history (ticket_id, action_type, old_value, new_value, performed_by) VALUES (?, "STATUS_CHANGE", ?, ?, ?)';
+            db.query(historySql, [id, oldStatus, status, performed_by]);
+
+            res.send({ message: 'Status updated and history logged' });
         });
     });
 });
 
-// 3. UPDATE: Change status
-app.put('/api/todos/:id', (req, res) => {
-    const { id } = req.params;
-    const { status } = req.body; 
-    
-    const allowedStatuses = ['Todo', 'Doing', 'Done'];
-    if (status && !allowedStatuses.includes(status)) {
-        return res.status(400).send({ message: 'Invalid status value' });
-    }
-
-    const sql = 'UPDATE todo SET status = ? WHERE id = ?';
-    db.query(sql, [status, id], (err, result) => {
-        if (err) return res.status(500).send(err);
-        res.send({ message: 'Status updated successfully' });
-    });
-});
-
-// 4. DELETE: Remove task
-app.delete('/api/todos/:id', (req, res) => {
-    const { id } = req.params;
-    const sql = 'DELETE FROM todo WHERE id = ?';
-    db.query(sql, [id], (err, result) => {
-        if (err) return res.status(500).send(err);
-        res.send({ message: 'Todo deleted successfully' });
-    });
-});
-
 // ------------------------------------
-// API: Users (For Dropdown)
+// API: Users List (For Dropdown)
 // ------------------------------------
 app.get('/api/users', (req, res) => {
-    const sql = 'SELECT username FROM users'; 
+    const sql = 'SELECT id, username FROM users'; 
     db.query(sql, (err, results) => {
         if (err) return res.status(500).send(err);
         res.json(results);

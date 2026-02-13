@@ -163,7 +163,7 @@ function TodoList({ user, onLogout }) {
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h5 className="mb-0 fw-bold">{myName}</h5>
-                    <span className="badge bg-secondary" style={{fontSize: '0.6rem'}}>{role.toUpperCase()}</span>
+                    <span className="badge{role ? role.toUpperCase() : 'USER'} bg-secondary" style={{fontSize: '0.6rem'}}></span>
                 </div>
                 <button className="btn btn-outline-danger btn-sm" onClick={onLogout}>Logout</button>
             </div>
@@ -192,9 +192,11 @@ function TodoList({ user, onLogout }) {
                         value={targetUserId}
                         onChange={(e) => setTargetUserId(e.target.value)}
                     >
+                        {/* Map through all users fetched from the database */}
                         {users.map(u => (
                             <option key={u.id} value={u.id}>
-                                {u.id === myId ? "Myself" : u.username}
+                                {/* Logic: If the ID matches mine, show 'Myself', otherwise show their name */}
+                                {Number(u.id) === Number(myId) ? `Myself (${myName})` : u.username}
                             </option>
                         ))}
                     </select>
