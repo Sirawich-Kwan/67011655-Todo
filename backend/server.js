@@ -47,22 +47,22 @@ app.post('/api/login', (req, res) => {
 // API: Tickets (Replacing old Todo logic)
 // ------------------------------------
 
-// 1. READ: Get tickets by User ID (not username)
+// 1. UPDATED READ: Get tickets where user is Assignee OR Follower (ST003)
 app.get('/api/todos/:userId', (req, res) => {
     const userId = parseInt(req.params.userId);
 
-    if (isNaN(userId)) {
-        return res.status(400).send({ message: "Invalid User ID" });
-    }
-
-    // Simplified SQL: Just get everything for this assignee
-    const sql = `SELECT * FROM tickets WHERE assignee_id = ? ORDER BY deadline ASC`;
+    // This SQL query uses UNION to find tickets assigned to you 
+    // AND tickets you are following in the ticket_followers table.
+    const sql = `
+        SELECT * FROM tickets WHERE assignee_id = ?
+        UNION
+        SELECT t.* FROM tickets t
+        JOIN ticket_followers tf ON t.id = tf.ticket_id
+        WHERE tf.user_id = ?
+        ORDER BY deadline ASC`;
         
-    db.query(sql, [userId], (err, results) => {
-        if (err) {
-            console.error("FETCH ERROR:", err.sqlMessage);
-            return res.status(500).send({ message: err.sqlMessage });
-        }
+    db.query(sql, [userId, userId], (err, results) => {
+        if (err) return res.status(500).send({ message: err.sqlMessage });
         res.json(results);
     });
 });
@@ -212,22 +212,14 @@ app.post('/api/comments', (req, res) => {
     });
 });
 
-// POST: Add a follower to a ticket (Requirement ST003)
+// 2. NEW POST: Add a follower (This makes the "Add Teammate" button work)
 app.post('/api/tickets/followers', (req, res) => {
     const { ticket_id, user_id } = req.body;
-
-    // We use IGNORE so if they are already following, it doesn't crash the server
-    const query = `
-        INSERT IGNORE INTO ticket_followers (ticket_id, user_id) 
-        VALUES (?, ?)
-    `;
-
-    db.query(query, [ticket_id, user_id], (err, result) => {
-        if (err) {
-            console.error("FOLLOWER ERROR:", err);
-            return res.status(500).json(err);
-        }
-        res.json({ message: "Follower added successfully" });
+    const sql = 'INSERT IGNORE INTO ticket_followers (ticket_id, user_id) VALUES (?, ?)';
+    
+    db.query(sql, [ticket_id, user_id], (err, result) => {
+        if (err) return res.status(500).json(err);
+        res.json({ success: true });
     });
 });
 

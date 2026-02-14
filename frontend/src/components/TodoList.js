@@ -64,12 +64,12 @@ function TodoList({ user, onLogout }) {
     const fetchComments = async (ticketId) => {
         try {
             // ST001: Get Comments
-            const response = await fetch(`${API_URL}/api/comments/${ticketId}?role=Assignee`);
+            const response = await fetch(`${API_URL}/comments/${ticketId}?role=Assignee`);
             const data = await response.json();
             setComments(data);
 
             // ST003: Get Followers
-            const followerRes = await fetch(`${API_URL}/api/tickets/${ticketId}/followers`);
+            const followerRes = await fetch(`${API_URL}/tickets/${ticketId}/followers`);
             const followerData = await followerRes.json();
             setFollowers(followerData);
 
@@ -172,30 +172,34 @@ function TodoList({ user, onLogout }) {
     };
 
     const handleAddComment = async (e, ticketId) => {
-        e.preventDefault();
-        if (!newComment.trim()) return;
+    e.preventDefault();
+    if (!newComment.trim()) return;
 
-        try {
-            const response = await fetch(`${API_URL}/api/comments`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ticket_id: ticketId,
-                    user_id: myId,
-                    comment_text: newComment,
-                    comment_type: isInternal ? 'Internal' : 'Public'
-                }),
-            });
+    try {
+        // Double check this URL: It must match your server.js route
+        const response = await fetch(`${API_URL}/api/comments`, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ticket_id: ticketId,
+                user_id: myId,
+                comment_text: newComment,
+                comment_type: isInternal ? 'Internal' : 'Public'
+            }),
+        });
 
-            if (response.ok) {
-                setNewComment('');
-                setIsInternal(false);
-                fetchComments(ticketId); 
-            }
-        } catch (err) {
-            console.error("Error adding comment:", err);
+        if (response.ok) {
+            setNewComment('');
+            setIsInternal(false);
+            fetchComments(ticketId); // This refreshes the sidebar
+        } else {
+            const errorData = await response.json();
+            alert("Error: " + errorData.message);
         }
-    };
+    } catch (err) {
+        console.error("Error adding comment:", err);
+    }
+};
 
     const handleAddFollower = async (ticketId, userId) => {
         if (!userId) return;
