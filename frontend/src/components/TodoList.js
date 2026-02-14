@@ -171,18 +171,18 @@ function TodoList({ user, onLogout }) {
         }
     };
 
-    const handleAddComment = async (e, ticketId) => {
+const handleAddComment = async (e, ticketId) => {
     e.preventDefault();
     if (!newComment.trim()) return;
 
     try {
-        // Double check this URL: It must match your server.js route
-        const response = await fetch(`${API_URL}/api/comments`, { 
+        // Change this URL to match your other working routes (remove /api if needed)
+        const response = await fetch(`${API_URL}/comments`, { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 ticket_id: ticketId,
-                user_id: myId,
+                user_id: myId, // Ensure this matches 'myId' from your destructuring
                 comment_text: newComment,
                 comment_type: isInternal ? 'Internal' : 'Public'
             }),
@@ -191,7 +191,7 @@ function TodoList({ user, onLogout }) {
         if (response.ok) {
             setNewComment('');
             setIsInternal(false);
-            fetchComments(ticketId); // This refreshes the sidebar
+            fetchComments(ticketId); 
         } else {
             const errorData = await response.json();
             alert("Error: " + errorData.message);
