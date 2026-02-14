@@ -87,35 +87,37 @@ app.post('/api/todos', (req, res) => {
     });
 });
 
-// 3. UPDATE: Status & Record History
+// --- UPDATE TICKET & LOG HISTORY ---
 app.put('/api/todos/:id', (req, res) => {
     const { id } = req.params;
     const { status, performed_by, resolution_comment } = req.body; 
 
+    // 1. Get the current status first so we know the "From" value
     db.query('SELECT status FROM tickets WHERE id = ?', [id], (err, current) => {
         if (err || current.length === 0) return res.status(404).send({ message: 'Ticket not found' });
         
         const oldStatus = current[0].status;
 
-        // Update main ticket
+        // 2. Update the main ticket with the new status and comment
         const sqlUpdate = 'UPDATE tickets SET status = ?, resolution_comment = ? WHERE id = ?';
         db.query(sqlUpdate, [status, resolution_comment || null, id], (err) => {
             if (err) return res.status(500).send({ message: err.sqlMessage });
 
-            // RECORD HISTORY: Now includes the resolution_comment as the "action_comment"
+            // 3. IMPORTANT: Insert into ticket_history
             const historySql = `
                 INSERT INTO ticket_history (ticket_id, action_type, action_comment, old_value, new_value, performed_by) 
                 VALUES (?, "STATUS_CHANGE", ?, ?, ?, ?)`;
             
-            db.query(historySql, [id, resolution_comment || 'Status updated', oldStatus, status, performed_by], (histErr) => {
+            // We use the resolution_comment as the action_comment
+            db.query(historySql, [id, resolution_comment || 'Updated status', oldStatus, status, performed_by], (histErr) => {
                 if (histErr) console.error("HISTORY LOG ERROR:", histErr.sqlMessage);
-                res.send({ success: true });
+                res.send({ success: true, message: 'Status updated and history logged' });
             });
         });
     });
 });
 
-// 4. GET HISTORY: Includes the performer's name
+// --- GET HISTORY WITH ASSIGNEE NAME ---
 app.get('/api/history/:ticketId', (req, res) => {
     const { ticketId } = req.params;
     const sql = `

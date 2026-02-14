@@ -277,7 +277,7 @@ function TodoList({ user, onLogout }) {
             <table className="table table-dark table-hover table-sm small mb-0">
                 <thead>
                     <tr>
-                        <th>Date/Time</th>
+                        <th>Time/Date</th>
                         <th>Assignee</th>
                         <th>From</th>
                         <th>To</th>
@@ -287,7 +287,7 @@ function TodoList({ user, onLogout }) {
                 <tbody>
                     {selectedHistory.map((log) => (
                         <tr key={log.id}>
-                            <td className="text-muted">{new Date(log.created_at).toLocaleString()}</td>
+                            <td className="text-muted">{new Date(log.created_at).toLocaleString('en-GB')}</td>
                             <td className="text-info">{log.assignee_name}</td>
                             <td className="text-secondary">{log.old_value}</td>
                             <td className="text-success fw-bold">{log.new_value}</td>
@@ -295,7 +295,9 @@ function TodoList({ user, onLogout }) {
                         </tr>
                     ))}
                     {selectedHistory.length === 0 && (
-                        <tr><td colSpan="5" className="text-center py-3 text-muted">No history found.</td></tr>
+                        <tr>
+                            <td colSpan="5" className="text-center py-3 text-muted">No history found for this ticket.</td>
+                        </tr>
                     )}
                 </tbody>
             </table>
