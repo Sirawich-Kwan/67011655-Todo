@@ -171,6 +171,79 @@ app.put('/api/todos/reassign/:id', (req, res) => {
         });
     });
 });
+
+// GET: Fetch all comments for a ticket
+app.get('/api/comments/:ticketId', (req, res) => {
+    const { ticketId } = req.params;
+    const { role } = req.query; // We pass the user's role in the query string
+
+    // Logic: If they are NOT an Assignee/Admin, they ONLY see 'Public'
+    let query = `
+        SELECT c.*, u.username 
+        FROM comments c
+        JOIN users u ON c.user_id = u.id
+        WHERE c.ticket_id = ?
+    `;
+
+    if (role !== 'Assignee' && role !== 'Admin') {
+        query += " AND c.comment_type = 'Public'";
+    }
+
+    query += " ORDER BY c.created_at ASC"; // Chronological order (ST001)
+
+    db.query(query, [ticketId], (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
+});
+
+// POST: Add a new comment
+app.post('/api/comments', (req, res) => {
+    const { ticket_id, user_id, comment_text, comment_type } = req.body;
+
+    const query = `
+        INSERT INTO comments (ticket_id, user_id, comment_text, comment_type)
+        VALUES (?, ?, ?, ?)
+    `;
+
+    db.query(query, [ticket_id, user_id, comment_text, comment_type], (err, result) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: "Comment added!", id: result.insertId });
+    });
+});
+
+// POST: Add a follower to a ticket (Requirement ST003)
+app.post('/api/tickets/followers', (req, res) => {
+    const { ticket_id, user_id } = req.body;
+
+    // We use IGNORE so if they are already following, it doesn't crash the server
+    const query = `
+        INSERT IGNORE INTO ticket_followers (ticket_id, user_id) 
+        VALUES (?, ?)
+    `;
+
+    db.query(query, [ticket_id, user_id], (err, result) => {
+        if (err) {
+            console.error("FOLLOWER ERROR:", err);
+            return res.status(500).json(err);
+        }
+        res.json({ message: "Follower added successfully" });
+    });
+});
+
+// GET: All followers for a ticket (Already in your code, but double check the path)
+app.get('/api/tickets/:id/followers', (req, res) => {
+    const query = `
+        SELECT u.username, u.id 
+        FROM ticket_followers tf
+        JOIN users u ON tf.user_id = u.id
+        WHERE tf.ticket_id = ?
+    `;
+    db.query(query, [req.params.id], (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
+});
 // ------------------------------------
 // API: Users List (For Dropdown)
 // ------------------------------------

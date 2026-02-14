@@ -4,45 +4,79 @@ const API_URL = process.env.REACT_APP_API_URL;
 
 function TodoList({ user, onLogout }) {
     const { id: myId, username: myName } = user;
+    
+    // --- STATE ---
     const [todos, setTodos] = useState([]);
-    const [users, setUsers] = useState([]); 
+    const [users, setUsers] = useState([]);
     const [targetUserId, setTargetUserId] = useState(myId);
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [targetDate, setTargetDate] = useState('');
+
+    // History State (EP04)
     const [selectedHistory, setSelectedHistory] = useState([]);
     const [viewingHistoryId, setViewingHistoryId] = useState(null);
 
+    // Collaboration State (EP05)
+    const [comments, setComments] = useState([]);
+    const [newComment, setNewComment] = useState('');
+    const [isInternal, setIsInternal] = useState(false);
+    const [viewingCommentsId, setViewingCommentsId] = useState(null);
+    const [followers, setFollowers] = useState([]);
+
     // --- API CALLS ---
-    const fetchHistory = async (ticketId) => {
+
+    const fetchTodos = async () => {
         try {
-            const response = await fetch(`${API_URL}/history/${ticketId}`);
-            const data = await response.json();
-            setSelectedHistory(data);
-            setViewingHistoryId(ticketId);
+            const response = await fetch(`${API_URL}/todos/${myId}`);
+            if (response.ok) {
+                const data = await response.json();
+                setTodos(data);
+            }
         } catch (err) {
-            console.error("Error fetching history:", err);
+            console.error('Error fetching tickets:', err);
         }
     };
 
     const fetchUsers = async () => {
         try {
             const response = await fetch(`${API_URL}/users`);
-            if (!response.ok) return;
-            const data = await response.json();
-            setUsers(data);
+            if (response.ok) {
+                const data = await response.json();
+                setUsers(data);
+            }
         } catch (err) {
             console.error('Error fetching users:', err);
         }
     };
 
-    const fetchTodos = async () => {
+    const fetchHistory = async (ticketId) => {
         try {
-            const response = await fetch(`${API_URL}/todos/${myId}`);
-            if (!response.ok) return;
+            const response = await fetch(`${API_URL}/history/${ticketId}`);
             const data = await response.json();
-            setTodos(data);
+            setSelectedHistory(data);
+            setViewingHistoryId(ticketId);
+            setViewingCommentsId(null); // Close comments if history opens
         } catch (err) {
-            console.error('Error fetching tickets:', err);
+            console.error("Error fetching history:", err);
+        }
+    };
+
+    const fetchComments = async (ticketId) => {
+        try {
+            // ST001: Get Comments
+            const response = await fetch(`${API_URL}/comments/${ticketId}?role=Assignee`);
+            const data = await response.json();
+            setComments(data);
+
+            // ST003: Get Followers
+            const followerRes = await fetch(`${API_URL}/tickets/${ticketId}/followers`);
+            const followerData = await followerRes.json();
+            setFollowers(followerData);
+
+            setViewingCommentsId(ticketId);
+            setViewingHistoryId(null); // Close history if comments open
+        } catch (err) {
+            console.error("Error fetching collaboration data:", err);
         }
     };
 
@@ -54,6 +88,7 @@ function TodoList({ user, onLogout }) {
     }, [myId]);
 
     // --- HANDLERS ---
+
     const handleAddTodo = async (e) => {
         e.preventDefault();
         if (!newTaskTitle.trim() || !targetDate) {
@@ -106,17 +141,14 @@ function TodoList({ user, onLogout }) {
                     resolution_comment: comment
                 }),
             });
-            
             if (response.ok) fetchTodos();
         } catch (err) {
             console.error('Error updating status:', err);
         }
     };
 
-    // EP04-ST004: Reassign Function
     const handleReassign = async (ticketId, newUserId) => {
         if (!newUserId) return;
-        
         const confirmMove = window.confirm("Are you sure you want to reassign this ticket?");
         if (!confirmMove) return;
 
@@ -139,7 +171,48 @@ function TodoList({ user, onLogout }) {
         }
     };
 
+    const handleAddComment = async (e, ticketId) => {
+        e.preventDefault();
+        if (!newComment.trim()) return;
+
+        try {
+            const response = await fetch(`${API_URL}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ticket_id: ticketId,
+                    user_id: myId,
+                    comment_text: newComment,
+                    comment_type: isInternal ? 'Internal' : 'Public'
+                }),
+            });
+
+            if (response.ok) {
+                setNewComment('');
+                setIsInternal(false);
+                fetchComments(ticketId); 
+            }
+        } catch (err) {
+            console.error("Error adding comment:", err);
+        }
+    };
+
+    const handleAddFollower = async (ticketId, userId) => {
+        if (!userId) return;
+        try {
+            const response = await fetch(`${API_URL}/tickets/followers`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ticket_id: ticketId, user_id: userId }),
+            });
+            if (response.ok) fetchComments(ticketId); 
+        } catch (err) {
+            console.error("Error adding follower:", err);
+        }
+    };
+
     // --- HELPERS ---
+
     const getStatusHeaderClass = (status) => {
         switch (status) {
             case 'Solving': return { backgroundColor: '#FFF4CC', color: '#856404' };
@@ -184,8 +257,7 @@ function TodoList({ user, onLogout }) {
                                         <small className="fw-bold d-block" style={{ fontSize: '0.75rem', color: isOverdue ? '#B91C1C' : '#2563EB' }}>
                                             Deadline: {formatDate(todo.deadline)}
                                         </small>
-                                        
-                                        {/* REASSIGN DROPDOWN (ONLY SHOW FOR ACTIVE TICKETS) */}
+
                                         {!['Solved', 'Failed'].includes(statusLabel) && (
                                             <div className="mt-2" style={{ maxWidth: '180px' }}>
                                                 <select 
@@ -201,21 +273,19 @@ function TodoList({ user, onLogout }) {
                                                 </select>
                                             </div>
                                         )}
-
                                         {todo.resolution_comment && (
-                                            <div className="mt-2 p-2 rounded bg-light border-start border-3 border-success small">
+                                            <div className="mt-2 p-2 rounded bg-light border-start border-3 border-success small text-wrap text-break">
                                                 <strong>Resolution:</strong> {todo.resolution_comment}
                                             </div>
                                         )}
                                     </div>
 
                                     <div className="d-flex align-items-center gap-2">
-                                        <button 
-                                            className="btn btn-sm btn-outline-secondary"
-                                            style={{ fontSize: '0.7rem' }}
-                                            onClick={() => fetchHistory(todo.id)}
-                                        >
+                                        <button className="btn btn-sm btn-outline-secondary" style={{ fontSize: '0.7rem' }} onClick={() => fetchHistory(todo.id)}>
                                             History
+                                        </button>
+                                        <button className="btn btn-sm btn-outline-primary" style={{ fontSize: '0.7rem' }} onClick={() => fetchComments(todo.id)}>
+                                            Comments
                                         </button>
                                         <select 
                                             className="form-select form-select-sm" 
@@ -240,12 +310,14 @@ function TodoList({ user, onLogout }) {
     };
 
     return (
-        <div className="container py-4" style={{ paddingBottom: viewingHistoryId ? '450px' : '40px' }}>
+        <div className="container py-4">
+            {/* Header */}
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h5 className="mb-0 fw-bold text-dark">{myName}</h5>
                 <button className="btn btn-outline-danger btn-sm px-3" onClick={onLogout}>Logout</button>
             </div>
 
+            {/* Workload Stats */}
             <div className="row mb-4">
                 <div className="col-12">
                     <div className="p-3 bg-white border rounded-3 d-flex align-items-center justify-content-between shadow-sm">
@@ -257,6 +329,7 @@ function TodoList({ user, onLogout }) {
                 </div>
             </div>
             
+            {/* Create Todo Form */}
             <form onSubmit={handleAddTodo} className="mb-5 bg-white p-4 rounded-3 border shadow-sm">
                 <div className="mb-3">
                     <label className="form-label small fw-bold text-secondary">Task Title</label>
@@ -281,11 +354,7 @@ function TodoList({ user, onLogout }) {
                     </div>
                     <div className="col-md-6">
                         <label className="form-label small fw-bold text-secondary">Assign To</label>
-                        <select 
-                            className="form-select"
-                            value={targetUserId}
-                            onChange={(e) => setTargetUserId(e.target.value)}
-                        >
+                        <select className="form-select" value={targetUserId} onChange={(e) => setTargetUserId(e.target.value)}>
                             {users.map(u => (
                                 <option key={u.id} value={u.id}>
                                     {Number(u.id) === Number(myId) ? `Myself (${myName})` : u.username}
@@ -309,7 +378,7 @@ function TodoList({ user, onLogout }) {
                 {['Solved', 'Failed'].map(status => renderTaskGroup(status))}
             </div>
 
-            {/* HISTORY OVERLAY */}
+            {/* EP04: HISTORY OVERLAY (CENTER/BOTTOM) */}
             {viewingHistoryId && (
                 <div className="position-fixed bottom-0 start-50 translate-middle-x mb-4 p-4 bg-dark text-white rounded-3 shadow-lg w-75" style={{ zIndex: 1050, maxHeight: '400px', overflowY: 'auto' }}>
                     <div className="d-flex justify-content-between align-items-center mb-3">
@@ -330,21 +399,78 @@ function TodoList({ user, onLogout }) {
                             <tbody>
                                 {selectedHistory.map((log) => (
                                     <tr key={log.id}>
-                                        {/* FIX: Set date text to light gray to avoid black text in dark mode */}
-                                        <td style={{ color: '#ced4da' }}>{new Date(log.created_at).toLocaleString('en-GB')}</td>
+                                        <td style={{ color: '#ced4da' }}>{formatDate(log.created_at)}</td>
                                         <td className="text-info">{log.assignee_name}</td>
                                         <td className="text-secondary">{log.old_value}</td>
                                         <td className="text-success fw-bold">{log.new_value}</td>
                                         <td className="italic text-light">{log.action_comment}</td>
                                     </tr>
                                 ))}
-                                {selectedHistory.length === 0 && (
-                                    <tr>
-                                        <td colSpan="5" className="text-center py-3 text-muted">No history found for this ticket.</td>
-                                    </tr>
-                                )}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {/* EP05: COLLABORATION SIDEBAR (RIGHT) */}
+            {viewingCommentsId && (
+                <div className="position-fixed top-0 end-0 h-100 bg-white shadow-lg border-start" style={{ width: '350px', zIndex: 1060, display: 'flex', flexDirection: 'column' }}>
+                    <div className="p-3 border-bottom d-flex justify-content-between align-items-center bg-primary text-white">
+                        <h6 className="mb-0 fw-bold">Ticket #{viewingCommentsId} Details</h6>
+                        <button className="btn-close btn-close-white" onClick={() => setViewingCommentsId(null)}></button>
+                    </div>
+
+                    {/* ST003: INVOLVED PEOPLE */}
+                    <div className="p-3 border-bottom bg-light">
+                        <label className="small fw-bold text-muted mb-2 d-block text-uppercase">Followers / Teammates</label>
+                        <div className="d-flex flex-wrap gap-1 mb-2">
+                            {followers.length > 0 ? followers.map(f => (
+                                <span key={f.id} className="badge bg-white text-dark border small shadow-sm">👤 {f.username}</span>
+                            )) : <span className="small text-muted">No followers yet</span>}
+                        </div>
+                        <select 
+                            className="form-select form-select-sm" 
+                            style={{fontSize: '0.7rem'}}
+                            onChange={(e) => handleAddFollower(viewingCommentsId, e.target.value)}
+                            defaultValue=""
+                        >
+                            <option value="" disabled>+ Add Teammate to follow</option>
+                            {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
+                        </select>
+                    </div>
+
+                    {/* ST001: COMMENT THREAD */}
+                    <div className="flex-grow-1 overflow-auto p-3 bg-light">
+                        {comments.length > 0 ? comments.map(c => (
+                            <div key={c.id} className={`p-2 mb-3 rounded-3 shadow-sm small ${c.comment_type === 'Internal' ? 'bg-warning-subtle border-start border-3 border-warning' : 'bg-white'}`}>
+                                <div className="d-flex justify-content-between mb-1">
+                                    <span className="fw-bold text-primary">{c.username}</span>
+                                    {c.comment_type === 'Internal' && <span className="badge bg-warning text-dark" style={{fontSize: '0.5rem'}}>INTERNAL</span>}
+                                </div>
+                                <div className="text-dark">{c.comment_text}</div>
+                                <div className="text-muted mt-1" style={{fontSize: '0.55rem'}}>{formatDate(c.created_at)}</div>
+                            </div>
+                        )) : <div className="text-center text-muted mt-5 small">No conversation yet.</div>}
+                    </div>
+
+                    {/* ST002: INPUT BOX */}
+                    <div className="p-3 border-top bg-white">
+                        <form onSubmit={(e) => handleAddComment(e, viewingCommentsId)}>
+                            <textarea 
+                                className="form-control form-control-sm mb-2" 
+                                rows="3" 
+                                placeholder="Type a message..." 
+                                value={newComment} 
+                                onChange={(e) => setNewComment(e.target.value)} 
+                            />
+                            <div className="d-flex justify-content-between align-items-center">
+                                <div className="form-check form-switch small">
+                                    <input className="form-check-input" type="checkbox" checked={isInternal} onChange={(e) => setIsInternal(e.target.checked)} />
+                                    <label className="form-check-label text-muted" style={{fontSize: '0.7rem'}}>Internal Only</label>
+                                </div>
+                                <button className="btn btn-primary btn-sm px-3 fw-bold" type="submit">Send</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
