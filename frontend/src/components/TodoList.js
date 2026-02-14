@@ -268,40 +268,40 @@ function TodoList({ user, onLogout }) {
 
             {/* HISTORY OVERLAY */}
             {viewingHistoryId && (
-                <div className="position-fixed bottom-0 start-50 translate-middle-x mb-4 p-4 bg-dark text-white rounded-3 shadow-lg w-75" style={{ zIndex: 1050, maxHeight: '400px', overflowY: 'auto' }}>
-                    <div className="d-flex justify-content-between align-items-center mb-3">
-                        <h6 className="mb-0">📜 Ticket History (ID: {viewingHistoryId})</h6>
-                        <button className="btn-close btn-close-white" onClick={() => setViewingHistoryId(null)}></button>
-                    </div>
-                    <div className="table-responsive">
-                        <table className="table table-dark table-hover table-sm small mb-0">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>User</th>
-                                    <th>Action</th>
-                                    <th>From</th>
-                                    <th>To</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {selectedHistory.map((log) => (
-                                    <tr key={log.id}>
-                                        <td className="text-muted">{new Date(log.created_at).toLocaleString()}</td>
-                                        <td className="text-info">{log.performer_name}</td>
-                                        <td>{log.action_type}</td>
-                                        <td className="text-secondary">{log.old_value}</td>
-                                        <td className="text-success fw-bold">{log.new_value}</td>
-                                    </tr>
-                                ))}
-                                {selectedHistory.length === 0 && (
-                                    <tr><td colSpan="5" className="text-center py-3 text-muted">No history found.</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
+    <div className="position-fixed bottom-0 start-50 translate-middle-x mb-4 p-4 bg-dark text-white rounded-3 shadow-lg w-75" style={{ zIndex: 1050, maxHeight: '400px', overflowY: 'auto' }}>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+            <h6 className="mb-0">📜 Ticket History (ID: {viewingHistoryId})</h6>
+            <button className="btn-close btn-close-white" onClick={() => setViewingHistoryId(null)}></button>
+        </div>
+        <div className="table-responsive">
+            <table className="table table-dark table-hover table-sm small mb-0">
+                <thead>
+                    <tr>
+                        <th>Date/Time</th>
+                        <th>Assignee</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Comment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {selectedHistory.map((log) => (
+                        <tr key={log.id}>
+                            <td className="text-muted">{new Date(log.created_at).toLocaleString()}</td>
+                            <td className="text-info">{log.assignee_name}</td>
+                            <td className="text-secondary">{log.old_value}</td>
+                            <td className="text-success fw-bold">{log.new_value}</td>
+                            <td className="italic text-light">{log.action_comment}</td>
+                        </tr>
+                    ))}
+                    {selectedHistory.length === 0 && (
+                        <tr><td colSpan="5" className="text-center py-3 text-muted">No history found.</td></tr>
+                    )}
+                </tbody>
+            </table>
+        </div>
+    </div>
+)}
         </div>
     );
 }

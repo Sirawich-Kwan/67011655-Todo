@@ -87,38 +87,47 @@ app.post('/api/todos', (req, res) => {
     });
 });
 
-// 3. UPDATE: Status & Record History (Professional Logic)
+// 3. UPDATE: Status & Record History
 app.put('/api/todos/:id', (req, res) => {
     const { id } = req.params;
-    // ADDED: resolution_comment here
     const { status, performed_by, resolution_comment } = req.body; 
 
     db.query('SELECT status FROM tickets WHERE id = ?', [id], (err, current) => {
-        if (err) return res.status(500).send({ message: "Database read error" });
-        if (current.length === 0) return res.status(404).send({ message: 'Ticket not found' });
+        if (err || current.length === 0) return res.status(404).send({ message: 'Ticket not found' });
         
         const oldStatus = current[0].status;
 
-        // UPDATED: Now updating TWO columns: status and resolution_comment
+        // Update main ticket
         const sqlUpdate = 'UPDATE tickets SET status = ?, resolution_comment = ? WHERE id = ?';
         db.query(sqlUpdate, [status, resolution_comment || null, id], (err) => {
-            if (err) {
-                console.error("UPDATE ERROR:", err.sqlMessage);
-                return res.status(500).send({ message: err.sqlMessage });
-            }
+            if (err) return res.status(500).send({ message: err.sqlMessage });
 
+            // RECORD HISTORY: Now includes the resolution_comment as the "action_comment"
             const historySql = `
-                INSERT INTO ticket_history (ticket_id, action_type, old_value, new_value, performed_by) 
-                VALUES (?, "STATUS_CHANGE", ?, ?, ?)`;
+                INSERT INTO ticket_history (ticket_id, action_type, action_comment, old_value, new_value, performed_by) 
+                VALUES (?, "STATUS_CHANGE", ?, ?, ?, ?)`;
             
-            db.query(historySql, [id, oldStatus, status, performed_by], (histErr) => {
-                if (histErr) {
-                    console.error("HISTORY LOG ERROR:", histErr.sqlMessage);
-                }
-                
-                res.send({ success: true, message: 'Status updated' });
+            db.query(historySql, [id, resolution_comment || 'Status updated', oldStatus, status, performed_by], (histErr) => {
+                if (histErr) console.error("HISTORY LOG ERROR:", histErr.sqlMessage);
+                res.send({ success: true });
             });
         });
+    });
+});
+
+// 4. GET HISTORY: Includes the performer's name
+app.get('/api/history/:ticketId', (req, res) => {
+    const { ticketId } = req.params;
+    const sql = `
+        SELECT h.*, u.username as assignee_name 
+        FROM ticket_history h
+        JOIN users u ON h.performed_by = u.id
+        WHERE h.ticket_id = ?
+        ORDER BY h.created_at DESC`;
+
+    db.query(sql, [ticketId], (err, results) => {
+        if (err) return res.status(500).send(err);
+        res.json(results);
     });
 });
 // ------------------------------------
@@ -136,19 +145,3 @@ app.listen(port, () => {
     console.log(`Server listening at http://localhost:${port}`);
 });
 
-
-// Get history for a specific ticket
-app.get('/api/history/:ticketId', (req, res) => {
-    const { ticketId } = req.params;
-    const sql = `
-        SELECT h.*, u.username as performer_name 
-        FROM ticket_history h
-        JOIN users u ON h.performed_by = u.id
-        WHERE h.ticket_id = ?
-        ORDER BY h.created_at DESC`;
-
-    db.query(sql, [ticketId], (err, results) => {
-        if (err) return res.status(500).send(err);
-        res.json(results);
-    });
-});
