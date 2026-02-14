@@ -117,18 +117,24 @@ app.put('/api/todos/:id', (req, res) => {
     });
 });
 
-// --- GET HISTORY WITH ASSIGNEE NAME ---
+// --- GET HISTORY WITH ASSIGNEE NAME (STABLE VERSION) ---
 app.get('/api/history/:ticketId', (req, res) => {
     const { ticketId } = req.params;
+    
+    // Using LEFT JOIN so the history shows even if the user isn't found
     const sql = `
-        SELECT h.*, u.username as assignee_name 
+        SELECT h.*, IFNULL(u.username, 'System/Unknown') as assignee_name 
         FROM ticket_history h
-        JOIN users u ON h.performed_by = u.id
+        LEFT JOIN users u ON h.performed_by = u.id
         WHERE h.ticket_id = ?
         ORDER BY h.created_at DESC`;
 
     db.query(sql, [ticketId], (err, results) => {
-        if (err) return res.status(500).send(err);
+        if (err) {
+            console.error("HISTORY FETCH ERROR:", err);
+            return res.status(500).send(err);
+        }
+        console.log(`History found for ticket ${ticketId}:`, results.length); // Check your terminal for this!
         res.json(results);
     });
 });
