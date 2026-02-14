@@ -64,12 +64,12 @@ function TodoList({ user, onLogout }) {
     const fetchComments = async (ticketId) => {
         try {
             // ST001: Get Comments
-            const response = await fetch(`${API_URL}/comments/${ticketId}?role=Assignee`);
+            const response = await fetch(`${API_URL}/api/comments/${ticketId}?role=Assignee`);
             const data = await response.json();
             setComments(data);
 
             // ST003: Get Followers
-            const followerRes = await fetch(`${API_URL}/tickets/${ticketId}/followers`);
+            const followerRes = await fetch(`${API_URL}/api/tickets/${ticketId}/followers`);
             const followerData = await followerRes.json();
             setFollowers(followerData);
 
@@ -176,7 +176,7 @@ function TodoList({ user, onLogout }) {
         if (!newComment.trim()) return;
 
         try {
-            const response = await fetch(`${API_URL}/comments`, {
+            const response = await fetch(`${API_URL}/api/comments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
