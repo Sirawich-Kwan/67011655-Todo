@@ -88,6 +88,9 @@ function TodoList({ user, onLogout }) {
 
     // --- HANDLERS ---
 
+// KEYWORD TODO: Manual Creation Logic
+// // Remove or hide this before production.
+
     const handleAddTodo = async (e) => {
         e.preventDefault();
         if (!newTaskTitle.trim() || !targetDate) {
@@ -119,6 +122,7 @@ function TodoList({ user, onLogout }) {
             console.error('Network Error:', err);
         }
     };
+    // REMOVE END HERE
 
     const handleStatusChange = async (ticketId, newStatus) => {
         let comment = "";
@@ -330,8 +334,9 @@ function TodoList({ user, onLogout }) {
                     </div>
                 </div>
             </div>
-            
-            <form onSubmit={handleAddTodo} className="mb-5 bg-white p-4 rounded-3 border shadow-sm">
+
+                {/* --- KEYWORD TODO: Assignee friend should hide or Remove this whole form block later --- */}            
+                <form onSubmit={handleAddTodo} className="mb-5 bg-white p-4 rounded-3 border shadow-sm">
                 <div className="mb-3">
                     <label className="form-label small fw-bold text-secondary">Task Title</label>
                     <input
@@ -366,6 +371,8 @@ function TodoList({ user, onLogout }) {
                 </div>
                 <button className="btn btn-primary w-100 fw-bold py-2" type="submit">Create Ticket</button>
             </form>
+            {/* --- REMOVE END HERE --- */}            
+
 
             <div className="active-workload">
                 <h5 className="mb-4 text-primary fw-bold">📂 Current Workload</h5>
