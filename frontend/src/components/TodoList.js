@@ -84,6 +84,7 @@ function TodoList({ user, onLogout }) {
             fetchTodos();
             fetchUsers();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [myId]);
 
     // --- HANDLERS ---
