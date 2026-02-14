@@ -138,6 +138,39 @@ app.get('/api/history/:ticketId', (req, res) => {
         res.json(results);
     });
 });
+
+// --- REASSIGN TICKET ---
+app.put('/api/todos/reassign/:id', (req, res) => {
+    const { id } = req.params;
+    const { new_assignee_id, performed_by } = req.body;
+
+    // 1. Get current assignee and name for the history log
+    const findOldSql = `
+        SELECT t.assignee_id, u.username 
+        FROM tickets t 
+        LEFT JOIN users u ON t.assignee_id = u.id 
+        WHERE t.id = ?`;
+
+    db.query(findOldSql, [id], (err, results) => {
+        if (err || results.length === 0) return res.status(404).send("Ticket not found");
+        
+        const oldAssigneeName = results[0].username || "Unassigned";
+
+        // 2. Update to the new assignee
+        db.query('UPDATE tickets SET assignee_id = ? WHERE id = ?', [new_assignee_id, id], (err) => {
+            if (err) return res.status(500).send(err);
+
+            // 3. Log it in history!
+            const historySql = `
+                INSERT INTO ticket_history (ticket_id, action_type, action_comment, old_value, new_value, performed_by) 
+                VALUES (?, "REASSIGN", ?, ?, (SELECT username FROM users WHERE id = ?), ?)`;
+            
+            db.query(historySql, [id, `Moved from ${oldAssigneeName}`, oldAssigneeName, new_assignee_id, performed_by], (histErr) => {
+                res.send({ success: true });
+            });
+        });
+    });
+});
 // ------------------------------------
 // API: Users List (For Dropdown)
 // ------------------------------------

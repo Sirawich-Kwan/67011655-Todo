@@ -287,8 +287,7 @@ function TodoList({ user, onLogout }) {
                 <tbody>
                     {selectedHistory.map((log) => (
                         <tr key={log.id}>
-                            <td className="text-muted">{new Date(log.created_at).toLocaleString('en-GB')}</td>
-                            <td className="text-info">{log.assignee_name}</td>
+                            <td className="text-white-50 small">{new Date(log.created_at).toLocaleString('en-GB')}</td>                            <td className="text-info">{log.assignee_name}</td>
                             <td className="text-secondary">{log.old_value}</td>
                             <td className="text-success fw-bold">{log.new_value}</td>
                             <td className="italic text-light">{log.action_comment}</td>
