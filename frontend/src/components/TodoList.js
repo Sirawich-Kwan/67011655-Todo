@@ -4,7 +4,8 @@ const API_URL = process.env.REACT_APP_API_URL;
 
 function TodoList({ user, onLogout }) {
     const { id: myId, username: myName } = user;
-    
+    const creatorPlaceholder = "Original Reporter"; // Placeholder for EP05-ST003
+
     // --- STATE ---
     const [todos, setTodos] = useState([]);
     const [users, setUsers] = useState([]);
@@ -55,7 +56,7 @@ function TodoList({ user, onLogout }) {
             const data = await response.json();
             setSelectedHistory(data);
             setViewingHistoryId(ticketId);
-            setViewingCommentsId(null); // Close comments if history opens
+            setViewingCommentsId(null); 
         } catch (err) {
             console.error("Error fetching history:", err);
         }
@@ -63,18 +64,16 @@ function TodoList({ user, onLogout }) {
 
     const fetchComments = async (ticketId) => {
         try {
-            // ST001: Get Comments
             const response = await fetch(`${API_URL}/comments/${ticketId}?role=Assignee`);
             const data = await response.json();
             setComments(data);
 
-            // ST003: Get Followers
             const followerRes = await fetch(`${API_URL}/tickets/${ticketId}/followers`);
             const followerData = await followerRes.json();
             setFollowers(followerData);
 
             setViewingCommentsId(ticketId);
-            setViewingHistoryId(null); // Close history if comments open
+            setViewingHistoryId(null); 
         } catch (err) {
             console.error("Error fetching collaboration data:", err);
         }
@@ -163,6 +162,11 @@ function TodoList({ user, onLogout }) {
             });
 
             if (response.ok) {
+                // Only close if it's no longer assigned to me
+                if (Number(newUserId) !== Number(myId)) {
+                    setViewingCommentsId(null);
+                    setViewingHistoryId(null);
+                }
                 fetchTodos(); 
                 alert("Ticket Reassigned!");
             }
@@ -171,35 +175,31 @@ function TodoList({ user, onLogout }) {
         }
     };
 
-const handleAddComment = async (e, ticketId) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
+    const handleAddComment = async (e, ticketId) => {
+        e.preventDefault();
+        if (!newComment.trim()) return;
 
-    try {
-        // Change this URL to match your other working routes (remove /api if needed)
-        const response = await fetch(`${API_URL}/comments`, { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                ticket_id: ticketId,
-                user_id: myId, // Ensure this matches 'myId' from your destructuring
-                comment_text: newComment,
-                comment_type: isInternal ? 'Internal' : 'Public'
-            }),
-        });
+        try {
+            const response = await fetch(`${API_URL}/comments`, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ticket_id: ticketId,
+                    user_id: myId, 
+                    comment_text: newComment,
+                    comment_type: isInternal ? 'Internal' : 'Public'
+                }),
+            });
 
-        if (response.ok) {
-            setNewComment('');
-            setIsInternal(false);
-            fetchComments(ticketId); 
-        } else {
-            const errorData = await response.json();
-            alert("Error: " + errorData.message);
+            if (response.ok) {
+                setNewComment('');
+                setIsInternal(false);
+                fetchComments(ticketId); 
+            }
+        } catch (err) {
+            console.error("Error adding comment:", err);
         }
-    } catch (err) {
-        console.error("Error adding comment:", err);
-    }
-};
+    };
 
     const handleAddFollower = async (ticketId, userId) => {
         if (!userId) return;
@@ -315,13 +315,11 @@ const handleAddComment = async (e, ticketId) => {
 
     return (
         <div className="container py-4">
-            {/* Header */}
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h5 className="mb-0 fw-bold text-dark">{myName}</h5>
                 <button className="btn btn-outline-danger btn-sm px-3" onClick={onLogout}>Logout</button>
             </div>
 
-            {/* Workload Stats */}
             <div className="row mb-4">
                 <div className="col-12">
                     <div className="p-3 bg-white border rounded-3 d-flex align-items-center justify-content-between shadow-sm">
@@ -333,7 +331,6 @@ const handleAddComment = async (e, ticketId) => {
                 </div>
             </div>
             
-            {/* Create Todo Form */}
             <form onSubmit={handleAddTodo} className="mb-5 bg-white p-4 rounded-3 border shadow-sm">
                 <div className="mb-3">
                     <label className="form-label small fw-bold text-secondary">Task Title</label>
@@ -382,7 +379,7 @@ const handleAddComment = async (e, ticketId) => {
                 {['Solved', 'Failed'].map(status => renderTaskGroup(status))}
             </div>
 
-            {/* EP04: HISTORY OVERLAY (CENTER/BOTTOM) */}
+            {/* EP04: HISTORY OVERLAY */}
             {viewingHistoryId && (
                 <div className="position-fixed bottom-0 start-50 translate-middle-x mb-4 p-4 bg-dark text-white rounded-3 shadow-lg w-75" style={{ zIndex: 1050, maxHeight: '400px', overflowY: 'auto' }}>
                     <div className="d-flex justify-content-between align-items-center mb-3">
@@ -416,7 +413,7 @@ const handleAddComment = async (e, ticketId) => {
                 </div>
             )}
 
-            {/* EP05: COLLABORATION SIDEBAR (RIGHT) */}
+            {/* EP05: COLLABORATION SIDEBAR */}
             {viewingCommentsId && (
                 <div className="position-fixed top-0 end-0 h-100 bg-white shadow-lg border-start" style={{ width: '350px', zIndex: 1060, display: 'flex', flexDirection: 'column' }}>
                     <div className="p-3 border-bottom d-flex justify-content-between align-items-center bg-primary text-white">
@@ -424,16 +421,31 @@ const handleAddComment = async (e, ticketId) => {
                         <button className="btn-close btn-close-white" onClick={() => setViewingCommentsId(null)}></button>
                     </div>
 
-                    {/* ST003: INVOLVED PEOPLE */}
                     <div className="p-3 border-bottom bg-light">
-                        <label className="small fw-bold text-muted mb-2 d-block text-uppercase">Followers / Teammates</label>
+                        <label className="small fw-bold text-muted mb-2 d-block text-uppercase">Project Roles</label>
+                        
+                        <div className="mb-2">
+                            <span className="badge bg-secondary text-white border small shadow-sm me-2">Creator</span>
+                            <span className="small text-dark">{creatorPlaceholder}</span>
+                        </div>
+
+                        {/* FIXED HEAD LEAD LOGIC */}
+                        <div className="mb-2">
+                            <span className="badge bg-primary text-white border small shadow-sm me-2">Head Lead</span>
+                            <span className="small text-dark fw-bold">
+                                {todos.find(t => t.id === viewingCommentsId)?.assignee_name || myName}
+                            </span>
+                        </div>
+
+                        <label className="small fw-bold text-muted mb-2 d-block text-uppercase mt-3">Followers / Teammates</label>
                         <div className="d-flex flex-wrap gap-1 mb-2">
                             {followers.length > 0 ? followers.map(f => (
                                 <span key={f.id} className="badge bg-white text-dark border small shadow-sm">👤 {f.username}</span>
                             )) : <span className="small text-muted">No followers yet</span>}
                         </div>
+                        
                         <select 
-                            className="form-select form-select-sm" 
+                            className="form-select form-select-sm mt-2" 
                             style={{fontSize: '0.7rem'}}
                             onChange={(e) => handleAddFollower(viewingCommentsId, e.target.value)}
                             defaultValue=""
@@ -443,7 +455,6 @@ const handleAddComment = async (e, ticketId) => {
                         </select>
                     </div>
 
-                    {/* ST001: COMMENT THREAD */}
                     <div className="flex-grow-1 overflow-auto p-3 bg-light">
                         {comments.length > 0 ? comments.map(c => (
                             <div key={c.id} className={`p-2 mb-3 rounded-3 shadow-sm small ${c.comment_type === 'Internal' ? 'bg-warning-subtle border-start border-3 border-warning' : 'bg-white'}`}>
@@ -457,7 +468,6 @@ const handleAddComment = async (e, ticketId) => {
                         )) : <div className="text-center text-muted mt-5 small">No conversation yet.</div>}
                     </div>
 
-                    {/* ST002: INPUT BOX */}
                     <div className="p-3 border-top bg-white">
                         <form onSubmit={(e) => handleAddComment(e, viewingCommentsId)}>
                             <textarea 

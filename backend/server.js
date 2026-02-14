@@ -46,19 +46,25 @@ app.post('/api/login', (req, res) => {
 // ------------------------------------
 // API: Tickets (Replacing old Todo logic)
 // ------------------------------------
-
 // 1. UPDATED READ: Get tickets where user is Assignee OR Follower (ST003)
 app.get('/api/todos/:userId', (req, res) => {
     const userId = parseInt(req.params.userId);
 
-    // This SQL query uses UNION to find tickets assigned to you 
-    // AND tickets you are following in the ticket_followers table.
+    // Added JOIN to users table to get the assignee_name
     const sql = `
-        SELECT * FROM tickets WHERE assignee_id = ?
+        SELECT t.*, u.username AS assignee_name 
+        FROM tickets t
+        LEFT JOIN users u ON t.assignee_id = u.id
+        WHERE t.assignee_id = ?
+        
         UNION
-        SELECT t.* FROM tickets t
+        
+        SELECT t.*, u.username AS assignee_name 
+        FROM tickets t
         JOIN ticket_followers tf ON t.id = tf.ticket_id
+        LEFT JOIN users u ON t.assignee_id = u.id
         WHERE tf.user_id = ?
+        
         ORDER BY deadline ASC`;
         
     db.query(sql, [userId, userId], (err, results) => {
